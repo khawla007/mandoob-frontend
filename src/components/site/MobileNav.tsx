@@ -40,8 +40,8 @@ type MobileNavProps = MobileNavBaseProps &
       }
   );
 
-const legacyIdsByHref: Readonly<Record<string, PublicNavLink['id']>> = {
-  '/business-setup': 'businessSetup',
+const legacyIdsByHref: Readonly<Record<string, string>> = {
+  '/business-registration': 'businessRegistration',
   '/mainland': 'mainland',
   '/free-zones': 'freeZones',
   '/offshore': 'offshore',

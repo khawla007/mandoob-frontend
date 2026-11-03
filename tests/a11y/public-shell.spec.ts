@@ -65,7 +65,7 @@ const copy = {
 } as const;
 
 const navigationHrefs = [
-  '/business-setup',
+  '/business-registration',
   '/mainland',
   '/free-zones',
   '/offshore',
@@ -89,7 +89,7 @@ const shellDestinations = [
   '/legal/trust',
 ] as const;
 const currentRouteCases = [
-  { route: '/business-setup', currentIndex: 0 },
+  { route: '/business-registration', currentIndex: 0 },
   { route: '/mainland', currentIndex: 1 },
   { route: '/how-it-works', currentIndex: 4 },
   { route: '/contact', currentIndex: 7 },

@@ -59,7 +59,13 @@ describe('homepage claims and CTA contract', () => {
   });
 
   it('uses the shared eyebrow treatment on major homepage sections', () => {
-    for (const file of ['ServicesSection.tsx', 'FlowSection.tsx', 'EstimatorSection.tsx']) {
+    for (const file of [
+      'ServicesSection.tsx',
+      'FlowSection.tsx',
+      'EstimatorSection.tsx',
+      'FeatureRowSection.tsx',
+      'TestimonialsSection.tsx',
+    ]) {
       const source = componentSources.find((component) => component.file === file)?.source ?? '';
       assert.match(source, /eyebrow eyebrow--accent/u, `${file} needs the shared eyebrow style`);
       assert.match(source, /t\('eyebrow'\)/u, `${file} needs localized eyebrow copy`);

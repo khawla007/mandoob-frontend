@@ -149,7 +149,7 @@ test('ships an executable Tier C browser runner instead of a handoff-only placeh
   assert.match(journeys, /aria-roledescription="carousel"/u);
   assert.match(journeys, /home-faq__trigger/u);
   assert.match(journeys, /getByRole\('button', \{ name: 'Clear filters' \}\)/u);
-  assert.match(journeys, /getByRole\('button', \{ name: 'Save locally' \}\)/u);
+  assert.match(journeys, /getByRole\('button', \{ name: 'Save Estimate' \}\)/u);
   assert.match(journeys, /getByRole\('dialog'/u);
   assert.match(journeys, /press\('Escape'\)/u);
   assert.match(journeys, /getByRole\('button', \{ name: 'Edit', exact: true \}\)/u);

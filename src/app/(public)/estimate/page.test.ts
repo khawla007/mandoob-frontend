@@ -58,7 +58,7 @@ test('estimate workspace exposes nine ordered wizard steps and non-color status 
   assert.match(component, /aria-live="polite"/u);
   assert.match(component, /data-step-state/u);
   assert.match(component, /Completed|Current|Needs attention/u);
-  assert.match(component, /Next step/u);
+  assert.match(component, /Next Step/u);
   assert.match(component, /Step \{currentStep\} of \{LAST_STEP\}/u);
   assert.equal((component.match(/Calculate indicative estimate/gu) ?? []).length, 1);
 });

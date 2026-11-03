@@ -11,8 +11,25 @@ export function SetupProcess({
   variant = 'cards',
 }: {
   steps: readonly SetupProcessStep[];
-  variant?: 'cards' | 'timeline';
+  variant?: 'cards' | 'timeline' | 'stepper';
 }) {
+  if (variant === 'stepper') {
+    // Design HTML progress tracker: numbered circles on one line, title below.
+    return (
+      <ol className="setup-stepper">
+        {steps.map((step, index) => (
+          <li key={step.title} data-active={index === 0 ? 'true' : undefined}>
+            <span className="setup-stepper__num" aria-hidden="true">
+              {index + 1}
+            </span>
+            <span className="setup-stepper__label">{step.title}</span>
+            <span className="sr-only">{step.description}</span>
+          </li>
+        ))}
+      </ol>
+    );
+  }
+
   if (variant === 'timeline') {
     return (
       <ol className="bizreg-process">

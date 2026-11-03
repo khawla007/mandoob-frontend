@@ -61,14 +61,14 @@ export default async function EstimatePage({
               <li>
                 <Link href="/">Home</Link>
               </li>
-              <li aria-current="page">Cost estimator</li>
+              <li aria-current="page">Cost Estimator</li>
             </ol>
           </nav>
           <div className="estimator-hero__copy">
-            <h1 id="estimator-title">Cost estimator</h1>
+            <h1 id="estimator-title">UAE Business Setup Cost Estimator</h1>
             <p>
-              Get an indicative, itemised estimate for your UAE business setup. Provide a few
-              details and see your one-time and recurring cost breakdown.
+              Get an instant, detailed estimate for your company setup in Mainland, Free Zone or
+              Offshore.
             </p>
             <ul className="estimator-hero__features" aria-label="Estimator features">
               {HERO_FEATURES.map(({ title, detail, icon: Icon }) => (
@@ -96,7 +96,11 @@ export default async function EstimatePage({
       >
         <div className="container">
           <div className="estimator-why">
-            <h2 id="estimator-assurance-title">Why use our cost estimator?</h2>
+            <header className="estimator-why__head">
+              <span className="eyebrow eyebrow--accent">Why use our cost estimator?</span>
+              <h2 id="estimator-assurance-title">Why Use Our Cost Estimator?</h2>
+              <p>Transparent pricing, guided choices and shareable estimates.</p>
+            </header>
             <ul>
               {WHY_ITEMS.map(({ title, detail, icon: Icon }) => (
                 <li key={title}>
@@ -115,7 +119,7 @@ export default async function EstimatePage({
               <Headset />
             </span>
             <div className="estimator-help-band__copy">
-              <h2>Need help choosing the right option?</h2>
+              <h2>Need Help Choosing the Right Option?</h2>
               <p>
                 Our business setup team can help you review your options. Costs and timelines are
                 confirmed against current authority requirements before you proceed.

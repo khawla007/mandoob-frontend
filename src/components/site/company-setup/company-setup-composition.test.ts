@@ -31,19 +31,19 @@ describe('company setup discovery composition contracts', () => {
     });
   }
 
-  it('keeps the Mainland eight-section reference order and paired panel rows', () => {
+  it('keeps the Mainland design-HTML section order and paired panel rows', () => {
     const component = source('src/components/site/company-setup/MainlandDiscovery.tsx');
     assert.deepEqual(sectionIds(component), [
       'setup-hero',
-      'setup-benefits',
       'mainland-emirates',
       'mainland-activities',
       'mainland-license-cost',
       'mainland-documents-timeline',
       'setup-faq',
-      'setup-conversion',
     ]);
     assert.equal(component.match(/setup-paired-panels/gu)?.length, 2);
+    // Closing band comes from the shared component (renders #setup-conversion).
+    assert.match(component, /<SetupCtaBand\b/u);
   });
 
   it('keeps the Free Zone directory table and nine-section reference order', () => {
@@ -71,9 +71,14 @@ describe('company setup discovery composition contracts', () => {
       'offshore-process',
       'offshore-operations',
       'setup-faq',
-      'setup-conversion',
     ]);
     assert.match(component, /setup-operations--three/u);
+    assert.match(component, /<SetupCtaBand\b/u);
+  });
+
+  it('renders the shared closing band as #setup-conversion', () => {
+    const band = source('src/components/site/company-setup/SetupCtaBand.tsx');
+    assert.deepEqual(sectionIds(band), ['setup-conversion']);
   });
 
   it('preserves the individual authority detail route', () => {

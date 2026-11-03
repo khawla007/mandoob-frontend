@@ -20,6 +20,7 @@ export async function FlowSection() {
           <h2 id="flow-h" className="home-section-title">
             {t('title')}
           </h2>
+          <p>{t('lede')}</p>
         </header>
         <ol className="home-flow-row" data-reveal-cards>
           {STEPS.map(([key, Icon], index) => (

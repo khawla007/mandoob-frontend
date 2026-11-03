@@ -1,263 +1,427 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
 import {
+  ArrowRight,
   BriefcaseBusiness,
-  Factory,
+  Building2,
+  CheckCircle2,
   FileCheck2,
-  Landmark,
-  MapPin,
+  FileText,
+  Globe2,
+  Link2,
   Plane,
   ShieldCheck,
-  UserRoundCheck,
+  ShoppingCart,
+  Users,
 } from 'lucide-react';
 import { MAINLAND_EMIRATES } from '@/lib/public-company-setup/catalog';
-import { SetupBenefitStrip } from './SetupBenefitStrip';
-import { SetupConversionBand } from './SetupConversionBand';
+import { SetupCtaBand } from './SetupCtaBand';
 import { SetupFaq } from './SetupFaq';
-import { SetupHero } from './SetupHero';
-import { SetupPanel } from './SetupPanel';
 
-const activities = [
+/**
+ * `/mainland` — layout and copy from the updated design HTML
+ * (`docs/updated design mandoopp/Whole HTML`, `renderMainland`). Reuses the
+ * Offshore page's hero, card and panel styles so both setup pages match.
+ */
+
+type Item = { title: string; detail: string; icon: LucideIcon };
+
+const heroBadges: readonly Item[] = [
+  { title: '100% Foreign Ownership in Most Activities', detail: '', icon: ShieldCheck },
+  { title: 'Access to UAE Local Market', detail: '', icon: Users },
+  { title: 'Eligible for Government Contracts', detail: '', icon: FileCheck2 },
+  { title: 'Operate Across All Emirates', detail: '', icon: Globe2 },
+];
+
+/** Captions from the design HTML, keyed by catalog emirate id. */
+const EMIRATE_COPY: Record<string, { caption: string; image: `/${string}` }> = {
+  dubai: {
+    caption: 'The business hub of UAE and international trade gateway.',
+    image: '/company-setup/emirates/dubai.jpg',
+  },
+  abu_dhabi: {
+    caption: 'Capital of UAE with strong economy and infrastructure.',
+    image: '/company-setup/emirates/abu_dhabi.jpg',
+  },
+  sharjah: {
+    caption: 'Business-friendly environment with cost-effective solutions.',
+    image: '/company-setup/emirates/sharjah.jpg',
+  },
+  ajman: {
+    caption: 'Affordable business setup with flexible regulations.',
+    image: '/company-setup/emirates/ajman.jpg',
+  },
+  ras_al_khaimah: {
+    caption: 'Growing economy with industrial opportunities.',
+    image: '/company-setup/emirates/ras_al_khaimah.jpg',
+  },
+  fujairah: {
+    caption: 'Strategic location on the Gulf of Oman.',
+    image: '/company-setup/emirates/fujairah.jpg',
+  },
+  umm_al_quwain: {
+    caption: 'Ideal for trading and industrial businesses.',
+    image: '/company-setup/emirates/umm_al_quwain.jpg',
+  },
+};
+
+const activities: readonly Item[] = [
   {
     title: 'Commercial',
-    detail: 'Trading and related commercial activities.',
-    icon: BriefcaseBusiness,
+    detail: 'Trading, E-commerce, retail, import/export and more.',
+    icon: ShoppingCart,
   },
   {
     title: 'Professional',
-    detail: 'Professional and specialist service activities.',
-    icon: Landmark,
+    detail: 'Consultancy, IT services, marketing, designing, legal and more.',
+    icon: BriefcaseBusiness,
   },
   {
     title: 'Industrial',
-    detail: 'Manufacturing or production, subject to approvals.',
-    icon: Factory,
+    detail: 'Manufacturing, assembly, packaging, logistics and more.',
+    icon: Building2,
   },
   {
     title: 'Tourism',
-    detail: 'Tourism activities with sector-specific requirements.',
+    detail: 'Travel, tourism, events, hospitality and entertainment.',
     icon: Plane,
   },
 ];
 
+const licenses: readonly Item[] = [
+  {
+    title: 'Commercial Licence',
+    detail: 'For trading and commercial activities',
+    icon: Building2,
+  },
+  {
+    title: 'Professional Licence',
+    detail: 'For service and professional activities',
+    icon: BriefcaseBusiness,
+  },
+  {
+    title: 'Industrial Licence',
+    detail: 'For industrial and manufacturing activities',
+    icon: Building2,
+  },
+  { title: 'Branch Licence', detail: 'For opening a branch of existing company', icon: Link2 },
+];
+
+const costLines = [
+  ['License Fee', 'AED 9,000 – 25,000'],
+  ['Government Fees', 'AED 2,000 – 5,000'],
+  ['Office Space (1 Year)', 'AED 6,000 – 12,000'],
+  ['Investor Visa (1)', 'AED 3,000 – 5,000'],
+  ['PRO Services', 'AED 2,000 – 3,000'],
+  ['Additional Services', 'AED 1,000 – 3,000'],
+] as const;
+
+const timeline = [
+  ['Initial Approval', '1 – 2 Working Days'],
+  ['Trade Name Reservation', '1 – 2 Working Days'],
+  ['License Issuance', '3 – 7 Working Days'],
+  ['Visa Processing (if applicable)', '5 – 10 Working Days'],
+] as const;
+
+const requiredDocuments = [
+  'Passport copies of shareholders',
+  'Visa copy (if applicable)',
+  'Emirates ID copy (if applicable)',
+  'Passport size photographs',
+  'Initial approval application',
+  'Business plan (may be required for some activities)',
+  'No Objection Certificate (if applicable)',
+] as const;
+
 export function MainlandDiscovery() {
   return (
-    <div className="setup-page">
-      <section id="setup-hero" className="setup-hero" aria-labelledby="mainland-title">
-        <SetupHero
-          headingId="mainland-title"
-          eyebrow="UAE mainland"
-          title={
-            <>
-              Build close to your <em>market.</em>
-            </>
-          }
-          description="Explore emirate-level setup routes for companies that plan to operate in the UAE market. Costs, permissions, and timelines remain activity and authority dependent."
-          currentLabel="Mainland"
-          imageSrc="/company-setup/mainland-hero.webp"
-          imageAlt="Contemporary UAE commercial district representing mainland company setup"
-          primaryCta={{ label: 'Estimate mainland cost', href: '/estimate?jurisdiction=mainland' }}
-          secondaryCta={{ label: 'Start application', href: '/apply' }}
-        />
-      </section>
-      <section
-        id="setup-benefits"
-        className="setup-benefits-shell"
-        aria-label="Mainland setup considerations"
-      >
-        <SetupBenefitStrip
-          items={[
-            {
-              title: 'Local market access',
-              detail: 'Plan for UAE-facing operations.',
-              icon: <MapPin />,
-            },
-            {
-              title: 'Activity-led licensing',
-              detail: 'Requirements vary by selected activity.',
-              icon: <FileCheck2 />,
-            },
-            {
-              title: 'Authority-specific route',
-              detail: 'Confirm the responsible emirate authority.',
-              icon: <ShieldCheck />,
-            },
-            {
-              title: 'Ownership review',
-              detail: 'Confirm current rules for your activity.',
-              icon: <UserRoundCheck />,
-            },
-          ]}
-        />
-      </section>
-      <section
-        id="mainland-emirates"
-        className="setup-section"
-        aria-labelledby="mainland-emirates-title"
-      >
-        <div className="container">
-          <header className="setup-section__head">
-            <div>
-              <span className="eyebrow">Choose an emirate</span>
-              <h2 id="mainland-emirates-title">Seven routes into the mainland.</h2>
-            </div>
+    <div className="setup-page offshore-page mainland-page">
+      <section id="setup-hero" className="offshore-hero" aria-labelledby="mainland-title">
+        <div className="offshore-hero__media" aria-hidden="true">
+          <Image
+            src="/company-setup/mainland-hero.webp"
+            alt=""
+            fill
+            loading="eager"
+            fetchPriority="high"
+            sizes="(min-width: 900px) 60vw, 100vw"
+          />
+        </div>
+        <div className="offshore-hero__frame container">
+          <nav className="setup-breadcrumb" aria-label="Breadcrumb">
+            <ol>
+              <li>
+                <Link href="/">Home</Link>
+              </li>
+              <li>
+                <Link href="/business-registration">Business Registration</Link>
+              </li>
+              <li aria-current="page">Mainland</li>
+            </ol>
+          </nav>
+          <div className="offshore-hero__copy">
+            <span className="eyebrow eyebrow--accent">Mainland business setup</span>
+            <h1 id="mainland-title" className="offshore-hero__title">
+              Start and Grow Your Business in the UAE Mainland
+            </h1>
             <p>
-              Start with location, then validate the activity, premises, ownership, and approval
-              requirements that apply to your case.
+              Establish your company anywhere in the UAE market with 100% foreign ownership in most
+              activities, access to local market and government contracts, and complete flexibility
+              to grow your business.
             </p>
-          </header>
-          <div className="setup-emirate-grid">
-            {MAINLAND_EMIRATES.map((item, index) => (
-              <article className="setup-card" key={item.id}>
-                <div className="setup-card__media">
-                  <Image
-                    src={item.image}
-                    alt=""
-                    fill
-                    sizes="180px"
-                    style={{ objectPosition: `${index * 15}% center` }}
-                  />
-                </div>
-                <div className="setup-card__body">
-                  <h3>{item.name}</h3>
-                  <p>{item.description}</p>
-                  <Link className="setup-card__link" href={item.href}>
-                    Estimate
-                  </Link>
-                </div>
-              </article>
-            ))}
+            <div className="cta-row">
+              <Link className="btn btn--accent btn--lg" href="/estimate?jurisdiction=mainland">
+                Calculate My Setup Cost
+                <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+              <Link className="btn btn--outline btn--lg" href="/apply">
+                Start Registration
+                <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+            </div>
+            <ul className="mainland-hero__badges" aria-label="Mainland setup highlights">
+              {heroBadges.map(({ title, icon: Icon }) => (
+                <li key={title}>
+                  <Icon aria-hidden="true" />
+                  {title}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
+
+      <section
+        id="mainland-emirates"
+        className="bizreg-section"
+        aria-labelledby="mainland-emirates-title"
+      >
+        <div className="container">
+          <header className="bizreg-head">
+            <span className="eyebrow eyebrow--accent">Choose your emirate</span>
+            <h2 id="mainland-emirates-title">Choose Your Emirate</h2>
+            <p>Select your preferred emirate to view specific requirements and costs.</p>
+          </header>
+          <ul className="mainland-emirates" role="list">
+            {MAINLAND_EMIRATES.map((item) => {
+              const copy = EMIRATE_COPY[item.id];
+              return (
+                <li className="mainland-emirate" key={item.id}>
+                  <div className="mainland-emirate__media">
+                    <Image
+                      src={copy?.image ?? item.image}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1200px) 190px, (min-width: 640px) 33vw, 50vw"
+                    />
+                  </div>
+                  <div className="mainland-emirate__body">
+                    <h3>{item.name}</h3>
+                    <p>{copy?.caption ?? item.description}</p>
+                    <Link className="bizreg-link" href={item.href}>
+                      View Details
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </section>
+
       <section
         id="mainland-activities"
-        className="setup-section setup-section--soft"
+        className="bizreg-section"
         aria-labelledby="mainland-activities-title"
       >
         <div className="container">
-          <header className="setup-section__head">
-            <div>
-              <span className="eyebrow">Business activities</span>
-              <h2 id="mainland-activities-title">Define what the company will do.</h2>
-            </div>
+          <header className="bizreg-head">
+            <span className="eyebrow eyebrow--accent">Business activities</span>
+            <h2 id="mainland-activities-title">Mainland Business Activities</h2>
             <p>
-              The selected activity can affect the license category, external approvals, premises,
-              and final cost.
+              Choose from 2,000+ business activities across commercial, professional, industrial and
+              tourism sectors.
             </p>
           </header>
-          <div className="setup-activity-grid">
+          <ul className="mainland-activities" role="list">
             {activities.map(({ title, detail, icon: Icon }) => (
-              <article className="setup-panel" key={title}>
-                <span className="setup-panel__icon">
+              <li className="mainland-activity" key={title}>
+                <span className="bizreg-icon" aria-hidden="true">
                   <Icon />
                 </span>
                 <h3>{title}</h3>
                 <p>{detail}</p>
-              </article>
+                <Link className="bizreg-link" href="/business-registration">
+                  View Activities
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
+
       <section
         id="mainland-license-cost"
-        className="setup-section"
-        aria-label="Mainland license and cost guidance"
+        className="bizreg-section"
+        aria-label="License types and estimated cost"
       >
-        <div className="setup-paired-panels container">
-          <SetupPanel
-            title="License planning"
-            description="The correct license follows the approved activity and authority route."
-          >
-            <ul className="setup-detail-list">
-              <li>Confirm business activity and legal form</li>
-              <li>Check any external or sector approvals</li>
-              <li>Validate premises and naming requirements</li>
+        <div className="setup-paired-panels mainland-pair container">
+          <article className="offshore-panel" aria-labelledby="mainland-license-title">
+            <header>
+              <h3 id="mainland-license-title">Mainland License Types</h3>
+              <p>Choose the right license type for your business.</p>
+            </header>
+            <ul className="mainland-licenses" role="list">
+              {licenses.map(({ title, detail, icon: Icon }) => (
+                <li key={title}>
+                  <span className="mainland-licenses__icon" aria-hidden="true">
+                    <Icon />
+                  </span>
+                  <span>
+                    <strong>{title}</strong>
+                    <small>{detail}</small>
+                  </span>
+                </li>
+              ))}
             </ul>
-          </SetupPanel>
-          <SetupPanel
-            className="setup-panel--dark"
-            title="Indicative cost components"
-            description="Use the estimator for planning—not a binding quotation."
-          >
-            <ul className="setup-detail-list">
-              <li>Registration and license fees</li>
-              <li>Office or premises requirements</li>
-              <li>Immigration, establishment, and related services</li>
-            </ul>
-            <Link className="setup-card__link" href="/estimate?jurisdiction=mainland">
-              Build an estimate
+            <Link className="btn btn--outline" href="/business-registration">
+              Compare License Types
+              <ArrowRight size={16} aria-hidden="true" />
             </Link>
-          </SetupPanel>
+          </article>
+
+          <article className="offshore-panel mainland-cost" aria-labelledby="mainland-cost-title">
+            <header>
+              <h3 id="mainland-cost-title">Estimated Setup Cost</h3>
+              <p>Cost range for mainland company setup in the UAE.</p>
+            </header>
+            <p className="offshore-panel__figure">AED 19,000 – AED 45,000</p>
+            <p className="offshore-panel__caption">Total one-time setup cost</p>
+            <dl className="offshore-rows">
+              {costLines.map(([label, value]) => (
+                <div key={label}>
+                  <dt>
+                    <FileText aria-hidden="true" />
+                    {label}
+                  </dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="offshore-panel__note">
+              *Costs vary based on emirate, activity and requirements.
+            </p>
+            <Link
+              className="btn btn--accent mainland-cost__cta"
+              href="/estimate?jurisdiction=mainland"
+            >
+              Calculate My Exact Setup Cost
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </article>
         </div>
       </section>
+
       <section
         id="mainland-documents-timeline"
-        className="setup-section setup-section--soft"
-        aria-label="Documents and timeline"
+        className="bizreg-section"
+        aria-label="Required documents and timeline"
       >
-        <div className="setup-paired-panels container">
-          <SetupPanel title="Typical documents to prepare">
-            <ul className="setup-detail-list">
-              <li>Shareholder and manager identification</li>
-              <li>Proposed trade names and activity details</li>
-              <li>Corporate documents when a shareholder is a company</li>
-              <li>Premises evidence where required</li>
+        <div className="setup-paired-panels mainland-pair container">
+          <article className="offshore-panel" aria-labelledby="mainland-documents-title">
+            <header>
+              <h3 id="mainland-documents-title">Required Documents</h3>
+              <p>Basic documents typically required for mainland setup.</p>
+            </header>
+            <ul className="offshore-checks offshore-checks--compact">
+              {requiredDocuments.map((item) => (
+                <li key={item}>
+                  <CheckCircle2 aria-hidden="true" />
+                  {item}
+                </li>
+              ))}
             </ul>
-          </SetupPanel>
-          <SetupPanel title="Setup timeline">
-            <ul className="setup-detail-list">
-              <li>Initial activity and name review</li>
-              <li>Application and approval processing</li>
-              <li>Premises and final license steps</li>
-            </ul>
-            <p>
-              Timing is indicative and can change with approvals, document readiness, and authority
-              processing.
-            </p>
-          </SetupPanel>
+            <Link className="btn btn--outline" href="/document-requirements">
+              View Detailed Requirements
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </article>
+
+          <article className="offshore-panel" aria-labelledby="mainland-timeline-title">
+            <header>
+              <h3 id="mainland-timeline-title">Estimated Timeline</h3>
+              <p>Average time to establish your mainland company.</p>
+            </header>
+            <ol className="offshore-rows offshore-rows--timeline">
+              {timeline.map(([label, range]) => (
+                <li key={label}>
+                  <span>{label}</span>
+                  <span>{range}</span>
+                </li>
+              ))}
+              <li className="offshore-rows__total">
+                <span>Total Estimated Time</span>
+                <span>7 – 15 Working Days</span>
+              </li>
+            </ol>
+            <Link className="btn btn--outline" href="/business-registration">
+              View Full Process
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </article>
         </div>
       </section>
-      <section id="setup-faq" className="setup-section">
+
+      <section id="setup-faq" className="bizreg-section offshore-faq">
         <SetupFaq
           headingId="mainland-faq-title"
-          title="Mainland setup questions"
+          eyebrow="FAQ"
+          title="Frequently Asked Questions"
+          lede="Common questions about mainland company formation."
           items={[
             {
-              question: 'Can a mainland company trade across the UAE?',
+              question: 'What is a mainland company in the UAE?',
               answer:
-                'A mainland route is generally used for UAE-facing operations, but the exact permitted activities and conditions follow the issued license and applicable approvals.',
+                "A mainland company is licensed by an emirate's economic department and can trade directly anywhere in the UAE and internationally.",
             },
             {
-              question: 'Is a physical office always required?',
+              question: 'Can foreigners have 100% ownership in a mainland company?',
               answer:
-                'Premises requirements depend on the activity, legal form, authority, and current rules. Confirm the requirement before committing to a lease.',
+                'Yes, 100% foreign ownership is permitted for most commercial and industrial activities. Certain strategic activities retain specific ownership rules.',
             },
             {
-              question: 'Are the estimator figures final?',
+              question: 'What are the costs involved in mainland company setup?',
               answer:
-                'No. They are indicative planning figures based on accepted records and should be verified with the relevant authority or adviser.',
+                'Typical one-time setup costs range from AED 19,000 to AED 45,000, including licence, government, office, visa and PRO fees.',
             },
             {
-              question: 'Do activities need additional approvals?',
+              question: 'Do I need a physical office for mainland company setup?',
               answer:
-                'Some regulated or sector-specific activities may require external approvals. Confirm these requirements for the selected activity and emirate.',
+                'A registered office address and Ejari/Tenancy contract are normally required. Flexi-desk options may be available for selected packages.',
+            },
+            {
+              question: 'Which emirate is best for mainland business setup?',
+              answer:
+                'Dubai offers the broadest market access; Sharjah and Ajman are cost-effective; Abu Dhabi suits industrial and government work.',
+            },
+            {
+              question: 'Can I do business anywhere in the UAE mainland?',
+              answer:
+                'Yes, a mainland licence permits trading across all seven emirates and internationally.',
             },
           ]}
         />
       </section>
-      <section
-        id="setup-conversion"
-        className="setup-conversion"
-        aria-labelledby="mainland-conversion-title"
-      >
-        <SetupConversionBand
-          headingId="mainland-conversion-title"
-          title="Turn your mainland idea into a practical plan."
-          description="Compare indicative costs first, then begin an application when your activity and location are clear."
-          estimateHref="/estimate?jurisdiction=mainland"
-        />
-      </section>
+
+      <SetupCtaBand
+        headingId="mainland-conversion-title"
+        title="Ready to Start Your Mainland Business?"
+        description="Get a clear estimate, understand your requirements and begin your business setup journey today."
+        estimateHref="/estimate?jurisdiction=mainland"
+      />
     </div>
   );
 }
