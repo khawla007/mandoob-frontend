@@ -719,13 +719,7 @@ export async function listPublishedBlogPostsPage(
   return {
     items: ((data as PublicBlogPostRow[] | null) ?? []).map((row) => ({
       ...mapBlogPostRow(row),
-      categories: (row.blog_post_terms ?? [])
-        .map((link) => link.blog_terms)
-        .filter(
-          (term): term is { slug: string; name: string; kind: string } =>
-            Boolean(term) && term!.kind === 'category',
-        )
-        .map(({ slug, name }) => ({ slug, name })),
+      categories: publicCategoriesOf(row),
     })),
     page: normalized.page,
     pageSize: normalized.pageSize,
@@ -736,6 +730,16 @@ export async function listPublishedBlogPostsPage(
 type PublicBlogPostRow = BlogPostRow & {
   blog_post_terms?: { blog_terms: { slug: string; name: string; kind: string } | null }[] | null;
 };
+
+function publicCategoriesOf(row: PublicBlogPostRow): { slug: string; name: string }[] {
+  return (row.blog_post_terms ?? [])
+    .map((link) => link.blog_terms)
+    .filter(
+      (term): term is { slug: string; name: string; kind: string } =>
+        Boolean(term) && term!.kind === 'category',
+    )
+    .map(({ slug, name }) => ({ slug, name }));
+}
 
 /** Public blog categories (kind = category) with their post counts, in admin sort order. */
 export async function listPublicBlogCategories(deps: Deps = {}): Promise<PublicBlogCategory[]> {
@@ -774,11 +778,11 @@ export async function listPublishedBlogPosts(deps: Deps = {}): Promise<BlogPost[
 export async function getPublishedBlogPostBySlug(
   slug: string,
   deps: Deps = {},
-): Promise<BlogPost | null> {
+): Promise<(BlogPost & { categories?: { slug: string; name: string }[] }) | null> {
   const supabase = await getSupabase(deps);
   const { data, error } = await supabase
     .from('blog_posts')
-    .select(PUBLIC_BLOG_POST_COLUMNS)
+    .select(`${PUBLIC_BLOG_POST_COLUMNS}, blog_post_terms(blog_terms(slug, name, kind))`)
     .eq('slug', normalizeBlogSlug(slug))
     .eq('status', 'published')
     .is('deleted_at', null)
@@ -786,7 +790,9 @@ export async function getPublishedBlogPostBySlug(
     .lte('published_at', new Date().toISOString())
     .maybeSingle();
   handleError(error, 'Could not read blog post');
-  return data ? mapBlogPostRow(data as BlogPostRow) : null;
+  if (!data) return null;
+  const row = data as PublicBlogPostRow;
+  return { ...mapBlogPostRow(row), categories: publicCategoriesOf(row) };
 }
 
 export async function uploadBlogMedia(

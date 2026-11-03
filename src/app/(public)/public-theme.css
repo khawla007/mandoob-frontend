@@ -14953,6 +14953,135 @@
   color: #fff;
 }
 
+/* Blog article (design HTML): same 540px hero as /blog, then a content card
+   (rounded cover, category badge + read time + date pills, prose, helpful
+   prompt) beside a Related Articles card with Get an Estimate. */
+.site-public .blog-article-section {
+  padding-block: clamp(38px, 4.5vw, 58px);
+}
+.site-public .blog-article-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: var(--sp-4);
+}
+.site-public .blog-article-card,
+.site-public .blog-article-aside__card {
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+  box-shadow: 0 8px 24px rgb(9 9 11 / 5%);
+}
+.site-public .blog-article-card {
+  padding: var(--sp-4);
+}
+.site-public .blog-article-card .blog-article__cover {
+  position: relative;
+  aspect-ratio: auto;
+  block-size: 280px;
+  margin: 0 0 var(--sp-4);
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--zinc-100);
+}
+.site-public .blog-article-card .blog-article__cover img {
+  object-fit: cover;
+}
+.site-public .blog-article__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-block-end: var(--sp-3);
+}
+.site-public .blog-article__badge,
+.site-public .blog-article__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding-inline: 14px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-12);
+  font-weight: 600;
+}
+.site-public .blog-article__badge {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.site-public .blog-article__pill {
+  border: 1px solid var(--public-border-subtle);
+  color: var(--public-text-muted);
+}
+.site-public .blog-article__pill svg {
+  width: 14px;
+  height: 14px;
+}
+.site-public .blog-article__helpful {
+  margin-block-start: var(--sp-4);
+  padding-block-start: var(--sp-4);
+  border-block-start: 1px solid var(--public-border-subtle);
+  color: var(--public-text-muted);
+  font-size: var(--fs-14);
+}
+.site-public .blog-article__helpful-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-block-start: 12px;
+}
+.site-public .blog-article__helpful-actions .btn {
+  gap: 6px;
+}
+.site-public .blog-article__helpful-thanks {
+  margin-block-start: 8px;
+  color: var(--public-text-primary);
+}
+.site-public .blog-article-aside {
+  position: sticky;
+  inset-block-start: 88px;
+}
+.site-public .blog-article-aside__card {
+  display: grid;
+  gap: 12px;
+  padding: var(--sp-4);
+}
+.site-public .blog-article-aside__card h2 {
+  font-size: var(--fs-15);
+}
+.site-public .blog-article-aside__card ul {
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.site-public .blog-article-aside__card li + li {
+  border-block-start: 1px solid var(--public-border-subtle);
+}
+.site-public .blog-article-aside__card li a {
+  display: block;
+  padding-block: 10px;
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+  line-height: 1.45;
+}
+.site-public .blog-article-aside__card li a:hover {
+  color: var(--accent);
+}
+.site-public .blog-article-aside__cta {
+  justify-content: center;
+}
+@media (max-width: 1023px) {
+  .site-public .blog-article-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .site-public .blog-article-aside {
+    position: static;
+  }
+}
+@media (max-width: 639px) {
+  .site-public .blog-article-card .blog-article__cover {
+    block-size: 200px;
+  }
+}
+
 /* ---------- About layout redesign (updated design HTML, 2026-11) ----------
    Values become four bordered cards (icon above copy) on a soft band;
    the shared conversion band becomes a contained rounded card, matching the
