@@ -996,6 +996,8 @@
     "rememberMeOnDevice": "Remember me on this device",
     "alreadyHaveAccount": "Already have an account?",
     "welcomeBack": "Welcome back to Mandoob.",
+    "loginTitle": "Login to Your Account",
+    "loginDescription": "Access your dashboard to manage your applications, documents and more.",
     "startRegistration": "Start your UAE company registration.",
     "sendResetLink": "Send reset link",
     "sending": "Sending…",
@@ -1160,25 +1162,25 @@
       "supportLabel": "Account help and next steps",
       "login": {
         "eyebrow": "Account access",
-        "title": "Welcome back to Mandoob.",
-        "description": "Sign in to continue to the account and workspace available to you.",
-        "privacyNote": "Your sign-in details are used to authenticate you and operate your account.",
+        "title": "Welcome Back!",
+        "description": "Log in to continue your business setup journey.",
+        "privacyNote": "Your information is safe with us. We use industry-standard security to protect your data and privacy.",
         "benefits": {
           "1": {
-            "title": "Continue your work",
-            "body": "Return to the next available account step."
+            "title": "Secure & Trusted",
+            "body": "Your information is safe with us."
           },
           "2": {
-            "title": "Review information",
-            "body": "Access information already available in your workspace."
+            "title": "Track Your Progress",
+            "body": "Track application status and documents."
           },
           "3": {
-            "title": "One account",
-            "body": "Use the account method supported by Mandoob."
+            "title": "Personalized Support",
+            "body": "Get expert assistance at every step."
           },
           "4": {
-            "title": "Find support",
-            "body": "Reach the support journey when you need help."
+            "title": "Save Time",
+            "body": "Save your progress and continue anytime."
           }
         }
       },

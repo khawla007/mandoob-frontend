@@ -30,9 +30,8 @@ export default async function LoginPage() {
   return (
     <>
       <header className="auth-card__head">
-        <span className="eyebrow">{t('accountEyebrow')}</span>
-        <h1>{t('signIn')}</h1>
-        <p>{t('welcomeBack')}</p>
+        <h1>{t('loginTitle')}</h1>
+        <p>{t('loginDescription')}</p>
       </header>
 
       <LoginForm />

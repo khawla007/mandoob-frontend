@@ -25,7 +25,13 @@ function NavDropdown({ link, pathname, onNavigate }: NavGroupProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
-  const isCurrent = link.children.some((child) => isPublicNavCurrent(child.currentPath, pathname));
+  // The group trigger is also current on nested pages of a child section
+  // (e.g. /blog/category/x, /blog/some-post, /free-zones/directory).
+  const isCurrent = link.children.some(
+    (child) =>
+      isPublicNavCurrent(child.currentPath, pathname) ||
+      (child.href !== '/' && pathname.startsWith(`${child.href}/`)),
+  );
 
   useEffect(() => {
     if (!open) return;
