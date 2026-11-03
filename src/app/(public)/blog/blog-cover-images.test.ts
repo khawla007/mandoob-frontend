@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const blogPageSource = readFileSync(join(process.cwd(), 'src/app/(public)/blog/page.tsx'), 'utf8');
+const blogPageSource = readFileSync(
+  join(process.cwd(), 'src/components/site/blog/BlogListing.tsx'),
+  'utf8',
+);
 const articlePageSource = readFileSync(
   join(process.cwd(), 'src/app/(public)/blog/[slug]/page.tsx'),
   'utf8',

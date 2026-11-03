@@ -14771,6 +14771,188 @@
   background: color-mix(in srgb, #16a34a 10%, var(--public-surface-elevated));
 }
 
+/* Blog (design HTML): 540px inner hero with the skyline as an end-side
+   faded backdrop and breadcrumb + copy centred as one block; all articles
+   in the home blog card grid (four per row); site section spacing. */
+.site-public .blog-hero__media {
+  display: none;
+}
+.site-public .blog-hero__title {
+  margin-block: 10px 14px;
+  font-size: clamp(2.25rem, 3.8vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+.site-public .blog-hero__copy .eyebrow.eyebrow--accent {
+  margin-bottom: 0;
+}
+.site-public .blog-hero .kb-editorial-breadcrumb {
+  margin-block-end: 24px;
+}
+.site-public .blog-hero .blog-search {
+  margin-block-start: 24px;
+  max-inline-size: 560px;
+}
+@media (min-width: 1024px) {
+  .site-public .blog-hero {
+    border-block-end: 0;
+    background: var(--public-canvas);
+  }
+  .site-public .blog-hero__media {
+    position: absolute;
+    z-index: -1;
+    inset-block: 0;
+    inset-inline: 38% 0;
+    display: block;
+  }
+  .site-public .blog-hero__media img {
+    object-fit: cover;
+    object-position: 70% 50%;
+  }
+  .site-public .blog-hero__media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to right,
+      var(--public-canvas) 0%,
+      color-mix(in oklch, var(--public-canvas) 70%, transparent) 25%,
+      transparent 60%
+    );
+  }
+  .site-public .blog-hero__inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: var(--inner-hero-block);
+    padding-block: 24px;
+  }
+  .site-public .blog-hero__copy {
+    max-width: 640px;
+  }
+}
+.site-public .blog-index {
+  padding-block: clamp(38px, 4.5vw, 58px);
+}
+.site-public .blog-index .kb-section-row {
+  align-items: flex-end;
+  margin-block-end: var(--sp-4);
+}
+.site-public .blog-card__date {
+  color: var(--public-text-muted);
+  font-size: var(--fs-12);
+}
+.site-public .blog-card h3 a {
+  color: inherit;
+}
+.site-public .blog-card__media:focus-visible {
+  outline: 3px solid var(--public-focus-ring);
+  outline-offset: -3px;
+}
+/* The legacy blog-card media used negative margins for an older padded
+   card; the home card layout needs it flush. */
+.site-public .blog-card .blog-card__media {
+  margin: 0;
+}
+
+/* Blog pagination: centred, no outer box — round page buttons and pill
+   Previous / Next links; the current page is filled with the accent. */
+.site-public .blog-pagination {
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+}
+.site-public .blog-pagination__pages {
+  gap: var(--sp-2);
+  border-inline: 0;
+}
+.site-public .blog-pagination__link,
+.site-public .blog-pagination__page {
+  min-height: 40px;
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-pill);
+  background: var(--public-surface-elevated);
+  font-family: inherit;
+  font-weight: 600;
+}
+.site-public .blog-pagination__page,
+.site-public .blog-pagination__page:last-child {
+  min-width: 40px;
+  padding-inline: 0;
+  border-inline-end: 1px solid var(--public-border-subtle);
+}
+.site-public .blog-pagination__link {
+  gap: 6px;
+  min-width: 0;
+  padding-inline: 18px;
+}
+.site-public .blog-pagination__link:hover,
+.site-public .blog-pagination__page:hover {
+  border-color: var(--accent);
+  background: var(--public-surface-elevated);
+  color: var(--accent);
+}
+.site-public .blog-pagination__page[aria-current='page'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.site-public .blog-pagination__link--disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Blog category chips (All + each category with its post count). */
+.site-public .blog-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-block-end: var(--sp-4);
+}
+.site-public .blog-categories__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding-inline: 16px;
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-pill);
+  background: var(--public-surface-elevated);
+  color: var(--public-text-primary);
+  font-size: var(--fs-13);
+  font-weight: 600;
+  transition:
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+.site-public .blog-categories__chip span {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: var(--public-surface);
+  color: var(--public-text-muted);
+  font-size: var(--fs-12);
+}
+.site-public .blog-categories__chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.site-public .blog-categories__chip[aria-current='page'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.site-public .blog-categories__chip[aria-current='page'] span {
+  background: rgb(255 255 255 / 22%);
+  color: #fff;
+}
+
 /* ---------- About layout redesign (updated design HTML, 2026-11) ----------
    Values become four bordered cards (icon above copy) on a soft band;
    the shared conversion band becomes a contained rounded card, matching the

@@ -21,6 +21,11 @@ import {
 const BLOG_MEDIA_BUCKET = 'blog-media';
 const BLOG_POST_COLUMNS =
   'id, slug, title, excerpt, content_json, content_html, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, featured_media_id, author_id, created_by, updated_by, deleted_at, created_at, updated_at, row_version';
+// Public, read-only listing and article reads do not use the optimistic
+// concurrency token, so they select without row_version. This keeps the
+// public Blog readable on databases where the editorial-contracts migration
+// (0088, which adds blog_posts.row_version) has not been applied yet.
+const PUBLIC_BLOG_POST_COLUMNS = BLOG_POST_COLUMNS.replace(', row_version', '');
 const BLOG_TERM_COLUMNS =
   'id, kind, slug, name, description, parent_id, sort_order, created_by, created_at, updated_at, row_version';
 const BLOG_MEDIA_COLUMNS =
@@ -208,8 +213,15 @@ type Deps = {
   now?: Date;
 };
 
+export type PublicBlogCategory = {
+  slug: string;
+  name: string;
+  description: string | null;
+  postCount: number;
+};
+
 export type BlogListPage = {
-  items: BlogPost[];
+  items: (BlogPost & { categories?: { slug: string; name: string }[] })[];
   page: number;
   pageSize: number;
   total: number;
@@ -674,14 +686,21 @@ export async function softDeleteBlogPost(
 }
 
 export async function listPublishedBlogPostsPage(
-  input: { page?: number; pageSize?: number; q?: string } = {},
+  input: { page?: number; pageSize?: number; q?: string; category?: string } = {},
   deps: Deps = {},
 ): Promise<BlogListPage> {
   const normalized = normalizeBlogListInput(input);
+  // normalizeBlogSlug falls back to 'post' for empty input, so guard first.
+  const category = input.category?.trim() ? normalizeBlogSlug(input.category) : '';
   const supabase = await getSupabase(deps);
+  // Embed each post's categories for the card chip; with a category filter the
+  // embed is an inner join so only posts in that category are returned.
+  const termEmbed = category
+    ? 'blog_post_terms!inner(blog_terms!inner(slug, name, kind))'
+    : 'blog_post_terms(blog_terms(slug, name, kind))';
   let query = supabase
     .from('blog_posts')
-    .select(BLOG_POST_COLUMNS, { count: 'exact' })
+    .select(`${PUBLIC_BLOG_POST_COLUMNS}, ${termEmbed}`, { count: 'exact' })
     .eq('status', 'published')
     .is('deleted_at', null)
     .not('published_at', 'is', null)
@@ -690,15 +709,56 @@ export async function listPublishedBlogPostsPage(
     .order('id', { ascending: true });
   if (normalized.q)
     query = query.or(`title.ilike.%${normalized.q}%,excerpt.ilike.%${normalized.q}%`);
+  if (category)
+    query = query
+      .eq('blog_post_terms.blog_terms.kind', 'category')
+      .eq('blog_post_terms.blog_terms.slug', category);
   const from = (normalized.page - 1) * normalized.pageSize;
   const { data, error, count } = await query.range(from, from + normalized.pageSize - 1);
   handleError(error, 'Could not list published blog posts');
   return {
-    items: ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow),
+    items: ((data as PublicBlogPostRow[] | null) ?? []).map((row) => ({
+      ...mapBlogPostRow(row),
+      categories: (row.blog_post_terms ?? [])
+        .map((link) => link.blog_terms)
+        .filter(
+          (term): term is { slug: string; name: string; kind: string } =>
+            Boolean(term) && term!.kind === 'category',
+        )
+        .map(({ slug, name }) => ({ slug, name })),
+    })),
     page: normalized.page,
     pageSize: normalized.pageSize,
     total: Math.max(0, count ?? 0),
   };
+}
+
+type PublicBlogPostRow = BlogPostRow & {
+  blog_post_terms?: { blog_terms: { slug: string; name: string; kind: string } | null }[] | null;
+};
+
+/** Public blog categories (kind = category) with their post counts, in admin sort order. */
+export async function listPublicBlogCategories(deps: Deps = {}): Promise<PublicBlogCategory[]> {
+  const supabase = await getSupabase(deps);
+  const { data, error } = await supabase
+    .from('blog_terms')
+    .select('slug, name, description, sort_order, blog_post_terms(count)')
+    .eq('kind', 'category')
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true });
+  handleError(error, 'Could not list blog categories');
+  type Row = {
+    slug: string;
+    name: string;
+    description: string | null;
+    blog_post_terms?: { count: number }[] | null;
+  };
+  return ((data as Row[] | null) ?? []).map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    postCount: row.blog_post_terms?.[0]?.count ?? 0,
+  }));
 }
 
 export async function listPublishedBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
@@ -718,7 +778,7 @@ export async function getPublishedBlogPostBySlug(
   const supabase = await getSupabase(deps);
   const { data, error } = await supabase
     .from('blog_posts')
-    .select(BLOG_POST_COLUMNS)
+    .select(PUBLIC_BLOG_POST_COLUMNS)
     .eq('slug', normalizeBlogSlug(slug))
     .eq('status', 'published')
     .is('deleted_at', null)

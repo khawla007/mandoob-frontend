@@ -185,6 +185,7 @@ test('public sitemap keeps newest CMS page when duplicate CMS slugs are present'
 test('sitemap content loads blog and CMS sources independently and logs sanitized warnings', async () => {
   const warnings: unknown[][] = [];
   const result = await loadSitemapContent({
+    listBlogCategorySlugs: async () => [],
     listBlogPosts: async () => {
       throw new Error('secret database details');
     },
@@ -203,6 +204,7 @@ test('sitemap content loads blog and CMS sources independently and logs sanitize
 
 test('sitemap content preserves blog posts when CMS loading fails', async () => {
   const result = await loadSitemapContent({
+    listBlogCategorySlugs: async () => [],
     listBlogPosts: async () => [{ slug: 'company-guide', updatedAt: '2026-07-07T08:00:00.000Z' }],
     listCmsPages: async () => {
       throw new Error('secret database details');
@@ -239,6 +241,7 @@ test('public sitemap exposes no estimator-seed authority routes when catalog is 
 test('sitemap catalog failure is isolated and warning omits exception details', async () => {
   const warnings: unknown[][] = [];
   const result = await loadSitemapContent({
+    listBlogCategorySlugs: async () => [],
     listBlogPosts: async () => [],
     listCmsPages: async () => [],
     listAuthoritySlugs: async () => {
