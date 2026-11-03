@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Clock3, Headset, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Clock3, Headset, MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 
 import { KnowledgeBaseExplorer } from '@/components/knowledge-base/KnowledgeBaseExplorer';
 import { KnowledgeBaseNewsletter } from '@/components/knowledge-base/KnowledgeBaseNewsletter';
@@ -74,6 +74,7 @@ export default async function KnowledgeBasePage({
               <Link className="btn btn--outline" href="/contact">
                 Contact Our Experts
               </Link>
+              <Headset className="kb-support-card__art" aria-hidden="true" />
             </div>
             <div className="kb-support-card kb-support-card--unavailable">
               <span className="eyebrow">WhatsApp · Unavailable</span>
@@ -82,6 +83,7 @@ export default async function KnowledgeBasePage({
                 No verified WhatsApp destination or delivery contract is available in this phase.
               </p>
               <span className="kb-unavailable-label">Unavailable</span>
+              <MessageCircle className="kb-support-card__art" aria-hidden="true" />
             </div>
           </aside>
         </div>

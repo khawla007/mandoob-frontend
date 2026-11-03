@@ -14741,6 +14741,29 @@
 .site-public .kb-support-card--unavailable {
   background: #eaf8f0;
 }
+/* Design: large faint icon in the bottom-end corner of each support card. */
+.site-public .kb-support-card {
+  position: relative;
+  overflow: hidden;
+}
+.site-public .kb-support-card > :not(.kb-support-card__art) {
+  position: relative;
+  z-index: 1;
+}
+.site-public .kb-support-card__art {
+  position: absolute;
+  z-index: 0;
+  inset-block-end: 8px;
+  inset-inline-end: 12px;
+  width: 68px;
+  height: 68px;
+  color: #3b82f6;
+  opacity: 0.2;
+  pointer-events: none;
+}
+.site-public .kb-support-card--unavailable .kb-support-card__art {
+  color: #16a34a;
+}
 .dark .site-public .kb-support-card {
   background: color-mix(in srgb, #3b82f6 10%, var(--public-surface-elevated));
 }
