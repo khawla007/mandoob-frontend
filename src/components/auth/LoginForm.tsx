@@ -144,9 +144,11 @@ export function LoginForm() {
   return (
     <Form {...form}>
       <form onSubmit={submit} className="space-y-4" noValidate>
-        <div role="group" aria-label={t('signInMethod')} className="grid grid-cols-2 gap-2">
-          <span className="btn btn--sm btn--accent">{t('emailMethod')}</span>
-          <span className="btn btn--sm opacity-60">
+        <div role="group" aria-label={t('signInMethod')} className="auth-method-tabs">
+          <span className="auth-method-tabs__tab" data-active="true">
+            {t('emailMethod')}
+          </span>
+          <span className="auth-method-tabs__tab" aria-disabled="true">
             {t('mobileMethod')} · {t('unavailable')}
           </span>
         </div>

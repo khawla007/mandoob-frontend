@@ -12,8 +12,8 @@ import {
   CircleHelp,
   ClipboardCheck,
   Clock3,
-  FileText,
-  KeyRound,
+  FileCheck2,
+  Headset,
   LifeBuoy,
   LockKeyhole,
   ShieldCheck,
@@ -30,7 +30,7 @@ type AuthExperienceProps = {
 };
 
 const narrativeIcons = {
-  login: [ClipboardCheck, FileText, KeyRound, LifeBuoy],
+  login: [ShieldCheck, FileCheck2, Headset, Clock3],
   register: [UserRoundPlus, ClipboardCheck, BadgeCheck, CircleHelp],
   sensitive: [ShieldCheck, LockKeyhole, Clock3, LifeBuoy],
 } as const;
