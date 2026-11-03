@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Circle, Loader2 } from 'lucide-react';
+import { ArrowRight, CircleCheck, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
@@ -175,7 +175,7 @@ export function RegisterForm() {
               <FormItem>
                 <FormLabel>{t('fullName')}</FormLabel>
                 <FormControl>
-                  <Input autoComplete="name" {...field} />
+                  <Input autoComplete="name" placeholder={t('fullNamePlaceholder')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -192,7 +192,7 @@ export function RegisterForm() {
                   <Input
                     type="email"
                     autoComplete="email"
-                    placeholder={t('emailPlaceholder')}
+                    placeholder={t('registerEmailPlaceholder')}
                     {...field}
                   />
                 </FormControl>
@@ -218,50 +218,60 @@ export function RegisterForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('password')}</FormLabel>
-              <FormControl>
-                <PasswordInput autoComplete="new-password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('password')}</FormLabel>
+                <FormControl>
+                  <PasswordInput
+                    autoComplete="new-password"
+                    placeholder={t('newPasswordPlaceholder')}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="confirmPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('confirmPassword')}</FormLabel>
-              <FormControl>
-                <PasswordInput autoComplete="new-password" {...field} />
-              </FormControl>
-              <p
-                role="status"
-                className={cn(
-                  'text-xs',
-                  confirmPassword
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('confirmPassword')}</FormLabel>
+                <FormControl>
+                  <PasswordInput
+                    autoComplete="new-password"
+                    placeholder={t('confirmPasswordPlaceholder')}
+                    {...field}
+                  />
+                </FormControl>
+                <p
+                  role="status"
+                  className={cn(
+                    'text-xs',
+                    confirmPassword
+                      ? confirmMatches
+                        ? 'text-emerald-600'
+                        : 'text-destructive'
+                      : 'hidden',
+                  )}
+                >
+                  {confirmPassword
                     ? confirmMatches
-                      ? 'text-emerald-600'
-                      : 'text-destructive'
-                    : 'hidden',
-                )}
-              >
-                {confirmPassword
-                  ? confirmMatches
-                    ? t('passwordsMatch')
-                    : tErrors('passwordMismatch')
-                  : ''}
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                      ? t('passwordsMatch')
+                      : tErrors('passwordMismatch')
+                    : ''}
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <PasswordRequirements rules={rules} allPassed={allRulesPassed} t={t} />
 
@@ -309,7 +319,10 @@ export function RegisterForm() {
               {t('creating')}
             </>
           ) : (
-            t('createAccount')
+            <>
+              {t('createAccountSubmit')}
+              <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
+            </>
           )}
         </button>
       </form>
@@ -327,30 +340,17 @@ function PasswordRequirements({
   t: ReturnType<typeof useTranslations<'auth'>>;
 }) {
   return (
-    <div
-      className="bg-muted/40 border-border rounded-md border p-3"
-      aria-labelledby="password-requirements-title"
-    >
-      <div className="text-muted-foreground mb-2 text-[11px] font-medium tracking-wide uppercase">
-        <span id="password-requirements-title">{t('passwordRequirements')}</span>
-        <span className="ms-2 normal-case" role="status" aria-live="polite">
+    <div className="password-rules" aria-labelledby="password-requirements-title">
+      <p className="password-rules__title">
+        <span id="password-requirements-title">{t('passwordMustContain')}</span>
+        <span className="visually-hidden" role="status" aria-live="polite">
           {allPassed ? t('passwordRequirementsMet') : t('passwordRequirementsPending')}
         </span>
-      </div>
-      <ul className="space-y-1">
+      </p>
+      <ul>
         {rules.map((r) => (
-          <li
-            key={r.id}
-            className={cn(
-              'flex items-center gap-2 text-xs transition-colors',
-              r.passed ? 'text-emerald-600' : 'text-muted-foreground',
-            )}
-          >
-            {r.passed ? (
-              <Check className="size-3.5" aria-hidden />
-            ) : (
-              <Circle className="size-3.5" aria-hidden />
-            )}
+          <li key={r.id} data-passed={r.passed ? 'true' : 'false'}>
+            <CircleCheck aria-hidden />
             <span>{t(r.labelKey as Parameters<typeof t>[0])}</span>
             <span className="visually-hidden">
               {r.passed ? t('requirementMet') : t('requirementNotMet')}

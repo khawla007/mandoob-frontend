@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ArrowUpRight,
-  BadgeCheck,
+  BellRing,
   BookOpenText,
   CircleHelp,
   ClipboardCheck,
@@ -17,6 +17,7 @@ import {
   LifeBuoy,
   LockKeyhole,
   ShieldCheck,
+  UserRound,
   UserRoundPlus,
 } from 'lucide-react';
 import {
@@ -31,7 +32,7 @@ type AuthExperienceProps = {
 
 const narrativeIcons = {
   login: [ShieldCheck, FileCheck2, Headset, Clock3],
-  register: [UserRoundPlus, ClipboardCheck, BadgeCheck, CircleHelp],
+  register: [UserRound, FileCheck2, BellRing, ShieldCheck],
   sensitive: [ShieldCheck, LockKeyhole, Clock3, LifeBuoy],
 } as const;
 
