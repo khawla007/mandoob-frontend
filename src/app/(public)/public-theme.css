@@ -7459,34 +7459,57 @@
 }
 
 /* ---------- 15. FOOTER ---------- */
+/* Dark in both themes (design HTML .site-footer). Tokens are re-pinned on the
+   footer root so the brand mark and text stay light-on-dark after the dark
+   theme inverts the ramp. */
 .site-public .footer {
+  --public-text-primary: #fafafa;
+  --public-canvas: #09090b;
+  --footer-muted: #a1a1aa;
+  --footer-border: #27272a;
+  --public-focus-ring: #ff5722;
   padding-top: var(--sp-6);
-  border-top: 1px solid var(--pb-border);
+  color: var(--public-text-primary);
+  background: var(--public-canvas);
 }
 .site-public .footer__grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--sp-5);
-  padding-bottom: var(--sp-6);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-5) var(--sp-4);
+  padding-bottom: var(--sp-5);
 }
-@media (min-width: 768px) {
+@media (min-width: 1100px) {
   .site-public .footer__grid {
-    grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) minmax(0, 1.25fr);
   }
 }
 .site-public .footer__brand {
+  grid-column: 1 / -1;
   min-width: 0;
 }
+@media (min-width: 1100px) {
+  .site-public .footer__brand {
+    grid-column: auto;
+  }
+  /* Pull the 44px brand target up so the mark lines up with the column headings. */
+  .site-public .footer__brand .nav__brand {
+    margin-block-start: -12px;
+  }
+}
+.site-public .footer__brand .nav__brand,
+.site-public .footer__brand .nav__brandName {
+  color: var(--public-text-primary);
+}
 .site-public .footer__tag {
-  margin-block: var(--sp-3);
+  margin-block-start: var(--sp-3);
   font-size: var(--fs-14);
-  color: var(--zinc-600);
-  max-inline-size: 32ch;
+  color: var(--footer-muted);
+  max-inline-size: 36ch;
   overflow-wrap: anywhere;
 }
 .site-public .footer__addr {
-  font-size: var(--fs-12);
-  color: var(--zinc-600); /* a11y: 4.5:1 on --paper (was --zinc-400 = 2.5:1) */
+  font-size: var(--fs-14);
+  color: var(--footer-muted);
   overflow-wrap: anywhere;
 }
 .site-public .footer__col h2 {
@@ -7494,13 +7517,12 @@
   font-size: var(--fs-12);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--zinc-600);
-  margin-bottom: var(--sp-4);
+  color: var(--public-text-primary);
+  margin-bottom: var(--sp-2);
   font-weight: 500;
 }
 .site-public .footer__col ul {
   display: grid;
-  gap: var(--sp-3);
 }
 .site-public .footer__col a {
   display: inline-flex;
@@ -7508,31 +7530,73 @@
   min-block-size: 44px;
   min-inline-size: 44px;
   font-size: var(--fs-14);
-  color: var(--zinc-700);
+  color: var(--footer-muted);
   overflow-wrap: anywhere;
+  transition: color 160ms ease;
 }
 .site-public .footer__col a:hover {
-  color: var(--ink);
+  color: var(--public-text-primary);
 }
 .site-public .footer__col a:focus-visible {
   outline: 2px solid var(--public-focus-ring);
   outline-offset: 2px;
 }
+.site-public .footer__legal a:focus-visible {
+  outline: 2px solid var(--public-focus-ring);
+  outline-offset: 2px;
+}
+.site-public .footer__contact li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  min-block-size: 44px;
+}
+.site-public .footer__contact li svg {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  color: var(--accent);
+}
+.site-public .footer__contact .footer__whatsapp svg {
+  color: #35d07f;
+}
+.site-public .footer__contact .footer__address {
+  align-items: flex-start;
+  padding-block: var(--sp-2);
+}
+.site-public .footer__contact .footer__address svg {
+  margin-block-start: 3px;
+}
 .site-public .footer__rule {
   height: 1px;
-  background: var(--pb-border);
+  background: var(--footer-border);
 }
 .site-public .footer__bottom {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   align-items: flex-start;
   justify-content: space-between;
-  padding-block: var(--sp-4);
+  padding-block: var(--sp-3);
   overflow-wrap: anywhere;
 }
 .site-public .footer__bottom .micro {
-  color: var(--zinc-600);
+  color: var(--footer-muted);
+}
+.site-public .footer__legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+.site-public .footer__legal a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  font-size: var(--fs-12);
+  color: var(--footer-muted);
+}
+.site-public .footer__legal a:hover {
+  color: var(--public-text-primary);
 }
 @media (min-width: 768px) {
   .site-public .footer__bottom {
