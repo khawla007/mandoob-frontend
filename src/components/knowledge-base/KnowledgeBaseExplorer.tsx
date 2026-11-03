@@ -1,5 +1,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Building2,
+  CircleDollarSign,
+  Clock3,
+  FileText,
+  Globe2,
+  IdCard,
+  ShieldCheck,
+} from 'lucide-react';
 
 import {
   buildKnowledgeBaseIndex,
@@ -12,7 +22,27 @@ import type {
   KnowledgeBaseCategoryId,
 } from '@/lib/knowledge-base';
 
+import { KnowledgeBaseCategoryGrid } from './KnowledgeBaseCategoryGrid';
+
 const POPULAR_QUERIES = ['Free zones', 'Documents', 'Visas', 'Costs'] as const;
+const CATEGORY_IMAGES: Record<string, string> = {
+  'company-setup': '/home-reference/business-setup-hd.png',
+  jurisdictions: '/company-setup/mainland-hero.webp',
+  documents: '/home-reference/uae-document-checklist.webp',
+  timelines: '/company-setup/emirates/dubai.jpg',
+  visas: '/home-reference/pro-services-hd.png',
+  costs: '/home-reference/vat-registration-hd.png',
+  compliance: '/company-setup/free-zone-hero.webp',
+};
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  'company-setup': Building2,
+  jurisdictions: Globe2,
+  documents: FileText,
+  timelines: Clock3,
+  visas: IdCard,
+  costs: CircleDollarSign,
+  compliance: ShieldCheck,
+};
 const GUIDE_IMAGES = [
   '/company-setup/mainland-hero.webp',
   '/company-setup/free-zone-hero.webp',
@@ -33,6 +63,7 @@ export function KnowledgeBaseExplorer({ articles, categories, query = '', catego
     ? (category as KnowledgeBaseCategoryId)
     : undefined;
   const index = buildKnowledgeBaseIndex(articles, categories);
+  const allCategories = [...index.primaryCategories, ...index.additionalCategories];
   const results = filterKnowledgeBaseArticles(articles, categories, {
     query: normalizedQuery,
     category: activeCategory,
@@ -43,13 +74,21 @@ export function KnowledgeBaseExplorer({ articles, categories, query = '', catego
       <section className="kb-reference-hero" aria-labelledby="kb-h">
         <div className="kb-reference-hero__inner container">
           <div className="kb-reference-hero__copy">
-            <span className="eyebrow">Knowledge Base</span>
-            <h1 id="kb-h" className="display">
-              Find answers for informed UAE company setup decisions.
+            <nav className="about-contact-breadcrumb" aria-label="Breadcrumb">
+              <ol>
+                <li>
+                  <Link href="/">Home</Link>
+                </li>
+                <li aria-current="page">Knowledge Base</li>
+              </ol>
+            </nav>
+            <span className="eyebrow eyebrow--accent">Knowledge Base</span>
+            <h1 id="kb-h" className="kb-reference-hero__title">
+              Find Answers. Start Your Business with Confidence.
             </h1>
             <p className="lede">
-              Search reviewed guidance on setup paths, documents, indicative timelines, visas,
-              costs, and compliance. Requirements vary by authority and activity.
+              Explore guides, FAQs, and resources to help you understand the UAE business setup
+              process better.
             </p>
             <form className="kb-search" action="/knowledge-base" role="search">
               <label htmlFor="knowledge-query">Search the Knowledge Base</label>
@@ -109,38 +148,30 @@ export function KnowledgeBaseExplorer({ articles, categories, query = '', catego
       <section id="topics" className="kb-reference-section" aria-labelledby="kb-topics-h">
         <div className="container">
           <header className="kb-reference-heading">
-            <h2 id="kb-topics-h">Browse by category</h2>
-            <p>Move directly to the reviewed topic that matches your current decision.</p>
+            <span className="eyebrow eyebrow--accent">Browse by category</span>
+            <h2 id="kb-topics-h">Browse by Category</h2>
+            <p>Explore topics that help you every step of the way.</p>
           </header>
-          <div className="kb-category-grid">
-            {index.primaryCategories.map((item, position) => (
+          <KnowledgeBaseCategoryGrid
+            initial={allCategories.slice(0, 4).map((item) => (
               <CategoryCard
                 key={item.id}
                 category={item}
                 count={index.categoryCounts.get(item.id) ?? 0}
                 active={activeCategory === item.id}
-                position={position + 1}
                 query={normalizedQuery}
               />
             ))}
-          </div>
-          {index.additionalCategories.length > 0 ? (
-            <details className="kb-all-categories">
-              <summary>View all categories</summary>
-              <div className="kb-category-grid kb-category-grid--additional">
-                {index.additionalCategories.map((item, position) => (
-                  <CategoryCard
-                    key={item.id}
-                    category={item}
-                    count={index.categoryCounts.get(item.id) ?? 0}
-                    active={activeCategory === item.id}
-                    position={position + 7}
-                    query={normalizedQuery}
-                  />
-                ))}
-              </div>
-            </details>
-          ) : null}
+            extra={allCategories.slice(4).map((item) => (
+              <CategoryCard
+                key={item.id}
+                category={item}
+                count={index.categoryCounts.get(item.id) ?? 0}
+                active={activeCategory === item.id}
+                query={normalizedQuery}
+              />
+            ))}
+          />
         </div>
       </section>
 
@@ -148,14 +179,18 @@ export function KnowledgeBaseExplorer({ articles, categories, query = '', catego
         <div className="container">
           <div className="kb-section-row">
             <header>
-              <h2 id="kb-guides-h">Start here</h2>
-              <p>Deterministic entry points from the reviewed Knowledge Base catalog.</p>
+              <h2 id="kb-guides-h">Popular Guides</h2>
+              <p>Expert-written guides to help you make informed decisions.</p>
             </header>
             {normalizedQuery || activeCategory ? (
               <Link className="kb-text-link" href="/knowledge-base">
                 Reset search and filters
               </Link>
-            ) : null}
+            ) : (
+              <Link className="kb-text-link" href="/guides">
+                View All Guides <span aria-hidden="true">→</span>
+              </Link>
+            )}
           </div>
           <p id="knowledge-search-status" className="sr-only" aria-live="polite">
             {results.length} {results.length === 1 ? 'guide' : 'guides'} found.
@@ -189,30 +224,39 @@ function CategoryCard({
   category,
   count,
   active,
-  position,
   query,
 }: {
   category: KnowledgeBaseCategory;
   count: number;
   active: boolean;
-  position: number;
   query: string;
 }) {
+  const Icon = CATEGORY_ICONS[category.id] ?? FileText;
+  const href = knowledgeHref({ query, category: active ? undefined : category.id });
   return (
-    <Link
-      className={active ? 'kb-category-card kb-category-card--active' : 'kb-category-card'}
-      href={knowledgeHref({ query, category: active ? undefined : category.id })}
-      aria-current={active ? 'true' : undefined}
+    <article
+      className={active ? 'home-knowledge-card kb-category-card--active' : 'home-knowledge-card'}
     >
-      <span className="kb-category-card__icon" aria-hidden="true">
-        {String(position).padStart(2, '0')}
-      </span>
-      <h3>{category.label}</h3>
-      <p>{category.description}</p>
-      <span className="kb-category-card__count">
-        {count} {count === 1 ? 'guide' : 'guides'}
-      </span>
-    </Link>
+      <div className="home-knowledge-card__media">
+        <Image
+          src={CATEGORY_IMAGES[category.id] ?? CATEGORY_IMAGES['company-setup']}
+          alt=""
+          fill
+          sizes="(max-width: 767px) 100vw, (max-width: 1100px) 50vw, 25vw"
+        />
+        <span>
+          <Icon aria-hidden="true" />
+          {count} {count === 1 ? 'Article' : 'Articles'}
+        </span>
+      </div>
+      <div className="home-knowledge-card__body">
+        <h3>{category.label}</h3>
+        <p>{category.description}</p>
+        <Link className="home-text-link" href={href} aria-current={active ? 'true' : undefined}>
+          {active ? 'Clear Filter' : 'View Articles'} <span aria-hidden="true">→</span>
+        </Link>
+      </div>
+    </article>
   );
 }
 

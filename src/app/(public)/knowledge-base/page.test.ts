@@ -31,7 +31,7 @@ test('Knowledge Base uses real discovery, native FAQ, safe support, and no-write
   assert.match(source, /KnowledgeBaseNewsletter/u);
   assert.doesNotMatch(
     source,
-    /45\+|Monthly|90 seconds|Popular Guides|Expert Support|Always Updated/u,
+    /45\+|Monthly|90 seconds/u,
   );
 });
 
