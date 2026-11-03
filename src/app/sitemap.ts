@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { listPublishedBlogPosts } from '@/lib/data/blog';
+import { listPublicBlogCategories, listPublishedBlogPosts } from '@/lib/data/blog';
 import { listPublishedCmsPages } from '@/lib/data/pages';
 import { listPublicCatalog } from '@/lib/data/public-catalog';
 import { knowledgeBaseArticles } from '@/lib/knowledge-base';
@@ -26,6 +26,7 @@ type SitemapInput = {
   blogPosts?: SitemapBlogPost[];
   cmsPages?: SitemapCmsPage[];
   authoritySlugs?: string[];
+  blogCategorySlugs?: string[];
 };
 
 async function listPublishedAuthoritySlugs(): Promise<string[]> {
@@ -56,6 +57,7 @@ export function buildPublicSitemap({
   blogPosts = [],
   cmsPages = [],
   authoritySlugs = [],
+  blogCategorySlugs = [],
 }: SitemapInput = {}): MetadataRoute.Sitemap {
   const base = origin.replace(/\/+$/, '');
   const staticPaths = [
@@ -95,6 +97,13 @@ export function buildPublicSitemap({
       priority: 0.7,
     }));
 
+  const blogCategoryEntries = blogCategorySlugs.map((slug) => ({
+    url: `${base}/blog/category/${slug}`,
+    lastModified: new Date('2026-11-03'),
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
   const cmsEntriesByUrl = new Map<string, MetadataRoute.Sitemap[number]>();
   cmsPages
     .filter((page) => !page.noindex)
@@ -116,17 +125,20 @@ export function buildPublicSitemap({
   const cmsEntries = [...cmsEntriesByUrl.values()];
 
   const seenUrls = new Set<string>();
-  return [...staticEntries, ...blogEntries, ...cmsEntries].filter((entry) => {
-    if (seenUrls.has(entry.url)) return false;
-    seenUrls.add(entry.url);
-    return true;
-  });
+  return [...staticEntries, ...blogEntries, ...blogCategoryEntries, ...cmsEntries].filter(
+    (entry) => {
+      if (seenUrls.has(entry.url)) return false;
+      seenUrls.add(entry.url);
+      return true;
+    },
+  );
 }
 
 type SitemapLoaders = {
   listBlogPosts?: () => Promise<SitemapBlogPost[]>;
   listCmsPages?: () => Promise<SitemapCmsPage[]>;
   listAuthoritySlugs?: () => Promise<string[]>;
+  listBlogCategorySlugs?: () => Promise<string[]>;
   warn?: (...args: unknown[]) => void;
 };
 
@@ -134,11 +146,13 @@ export async function loadSitemapContent({
   listBlogPosts = listPublishedBlogPosts,
   listCmsPages = listPublishedCmsPages,
   listAuthoritySlugs = listPublishedAuthoritySlugs,
+  listBlogCategorySlugs = async () => (await listPublicBlogCategories()).map((item) => item.slug),
   warn = console.warn,
 }: SitemapLoaders = {}): Promise<{
   blogPosts: SitemapBlogPost[];
   cmsPages: SitemapCmsPage[];
   authoritySlugs: string[];
+  blogCategorySlugs: string[];
 }> {
   let blogPosts: SitemapBlogPost[] = [];
   try {
@@ -161,7 +175,14 @@ export async function loadSitemapContent({
     warn('Could not load public catalog authorities for sitemap');
   }
 
-  return { blogPosts, cmsPages, authoritySlugs };
+  let blogCategorySlugs: string[] = [];
+  try {
+    blogCategorySlugs = await listBlogCategorySlugs();
+  } catch {
+    warn('Could not load blog categories for sitemap');
+  }
+
+  return { blogPosts, cmsPages, authoritySlugs, blogCategorySlugs };
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

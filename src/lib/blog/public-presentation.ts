@@ -54,12 +54,13 @@ export function parseBlogPage(value: SearchValue, totalPages: number): number {
   return Math.min(Number(raw), Math.max(1, totalPages));
 }
 
-export function blogPageHref(page: number, query = ''): string {
+export function blogPageHref(page: number, query = '', category = ''): string {
   const params = new URLSearchParams();
   if (query.trim()) params.set('q', query.trim());
   if (page > 1) params.set('page', String(page));
   const value = params.toString();
-  return value ? `/blog?${value}` : '/blog';
+  const base = category ? `/blog/category/${encodeURIComponent(category)}` : '/blog';
+  return value ? `${base}?${value}` : base;
 }
 
 export function buildBlogArticleJsonLd(post: BlogPost, siteOrigin: string) {

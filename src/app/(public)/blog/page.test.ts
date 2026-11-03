@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+const source = readFileSync(
+  new URL('../../../components/site/blog/BlogListing.tsx', import.meta.url),
+  'utf8',
+);
 const css = readFileSync(new URL('../public-theme.css', import.meta.url), 'utf8');
 
 test('Blog index uses explicit read/search states and semantic pagination boundaries', () => {
@@ -16,10 +19,10 @@ test('Blog index uses explicit read/search states and semantic pagination bounda
   assert.doesNotMatch(source, /Updated[\s\S]*by editors/u);
 });
 
-test('Blog featured media keeps its keyboard focus ring inside the clipped card', () => {
+test('Blog cards keep the media focus ring inside the clipped card', () => {
   assert.match(
     css,
-    /\.site-public \.blog-featured-card__media:focus-visible\s*\{[^}]*outline-offset:\s*-3px/u,
+    /\.site-public \.blog-card__media:focus-visible\s*\{[^}]*outline-offset:\s*-3px/u,
   );
 });
 
