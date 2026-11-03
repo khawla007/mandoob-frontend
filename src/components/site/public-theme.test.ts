@@ -302,13 +302,15 @@ renderTest('current navigation and footer muted copy use design-4 semantic color
     declarations(".site-public .nav__links a[aria-current='page']"),
     /color:\s*var\(--accent\)/u,
   );
-  for (const selector of [
-    '.site-public .footer__tag',
-    '.site-public .footer__col h2',
-    '.site-public .footer__bottom .micro',
-  ]) {
-    assert.match(declarations(selector), /color:\s*var\(--zinc-600\)/u, selector);
+  // The footer is dark in both themes; muted copy uses its pinned light-on-dark token.
+  assert.match(declarations('.site-public .footer'), /--footer-muted:\s*#a1a1aa/u);
+  for (const selector of ['.site-public .footer__tag', '.site-public .footer__bottom .micro']) {
+    assert.match(declarations(selector), /color:\s*var\(--footer-muted\)/u, selector);
   }
+  assert.match(
+    declarations('.site-public .footer__col h2'),
+    /color:\s*var\(--public-text-primary\)/u,
+  );
 });
 
 renderTest('hidden skip link cannot create RTL document overflow', () => {

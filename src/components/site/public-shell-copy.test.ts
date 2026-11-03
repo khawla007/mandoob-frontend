@@ -32,23 +32,32 @@ const SHELL_COPY_PATHS = [
   'themeUseDark',
   'languageChanging',
   'languageChangeFailed',
-  'footer.product',
+  'footer.businessSetup',
+  'footer.resources',
   'footer.company',
-  'footer.legal',
+  'footer.getInTouch',
   'footer.description',
-  'footer.location',
   'footer.identity',
-  'footer.estimator',
-  'footer.startApplication',
-  'footer.pricing',
-  'footer.about',
+  'footer.mainland',
+  'footer.freeZones',
+  'footer.offshore',
+  'footer.costEstimator',
+  'footer.businessRegistration',
   'footer.knowledgeBase',
-  'footer.contact',
-  'footer.howItWorks',
-  'footer.privacy',
-  'footer.terms',
+  'footer.guides',
+  'footer.documentRequirements',
+  'footer.faq',
+  'footer.blog',
+  'footer.aboutUs',
+  'footer.contactUs',
+  'footer.privacyPolicy',
+  'footer.termsConditions',
+  'footer.whatsapp',
+  'footer.addressLine1',
+  'footer.addressLine2',
   'footer.pdpl',
   'footer.trustCenter',
+  'footer.legalLabel',
 ] as const;
 
 function valueAt(root: unknown, path: string): unknown {
@@ -123,7 +132,12 @@ describe('public shell copy contract', () => {
       ['en', en],
       ['ar', ar],
     ] as const) {
-      for (const path of ['footer.description', 'footer.location', 'footer.identity']) {
+      for (const path of [
+        'footer.description',
+        'footer.addressLine1',
+        'footer.addressLine2',
+        'footer.identity',
+      ]) {
         const value = valueAt(messages.site, path);
         assert.equal(typeof value, 'string', `Missing ${locale}.site.${path}`);
         for (const claim of unsupportedClaims) {

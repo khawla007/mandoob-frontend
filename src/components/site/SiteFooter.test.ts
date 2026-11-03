@@ -6,15 +6,20 @@ const footer = readFileSync(new URL('./SiteFooter.tsx', import.meta.url), 'utf8'
 const css = readFileSync(new URL('../../app/(public)/public-theme.css', import.meta.url), 'utf8');
 
 const expectedLinks = [
-  ['/estimate', 'estimator'],
-  ['/apply', 'startApplication'],
-  ['/pricing', 'pricing'],
-  ['/about', 'about'],
+  ['/mainland', 'mainland'],
+  ['/free-zones', 'freeZones'],
+  ['/offshore', 'offshore'],
+  ['/estimate', 'costEstimator'],
+  ['/business-registration', 'businessRegistration'],
   ['/knowledge-base', 'knowledgeBase'],
-  ['/contact', 'contact'],
-  ['/#flow', 'howItWorks'],
-  ['/legal/privacy', 'privacy'],
-  ['/legal/terms', 'terms'],
+  ['/guides', 'guides'],
+  ['/document-requirements', 'documentRequirements'],
+  ['/faq', 'faq'],
+  ['/blog', 'blog'],
+  ['/about', 'aboutUs'],
+  ['/contact', 'contactUs'],
+  ['/legal/privacy', 'privacyPolicy'],
+  ['/legal/terms', 'termsConditions'],
   ['/legal/pdpl', 'pdpl'],
   ['/legal/trust', 'trustCenter'],
 ] as const;
@@ -38,7 +43,7 @@ describe('SiteFooter localization and integrity contract', () => {
   it('renders one implicit contentinfo landmark and localized navigation labels', () => {
     assert.equal(footer.match(/<footer\b/gu)?.length, 1);
     assert.doesNotMatch(footer, /<footer[^>]*\srole=["']contentinfo["']/u);
-    for (const heading of ['product', 'company', 'legal']) {
+    for (const heading of ['businessSetup', 'resources', 'company']) {
       assert.match(footer, new RegExp(`heading: tFooter\\('${heading}'\\)`, 'u'));
     }
     assert.match(footer, /aria-label=\{column\.heading\}/u);
@@ -46,6 +51,7 @@ describe('SiteFooter localization and integrity contract', () => {
 
   it('uses level-two headings for each footer navigation group', () => {
     assert.match(footer, /<h2>\{column\.heading\}<\/h2>/u);
+    assert.match(footer, /<h2>\{tFooter\('getInTouch'\)\}<\/h2>/u);
     assert.doesNotMatch(footer, /<h3>/u);
   });
 
@@ -68,7 +74,7 @@ describe('SiteFooter localization and integrity contract', () => {
   });
 
   it('uses reviewed neutral identity copy and no unsupported claims or visible English', () => {
-    for (const key of ['description', 'location', 'identity']) {
+    for (const key of ['description', 'addressLine1', 'addressLine2', 'identity']) {
       assert.match(footer, new RegExp(`tFooter\\('${key}'\\)`, 'u'));
     }
     assert.doesNotMatch(
@@ -77,7 +83,7 @@ describe('SiteFooter localization and integrity contract', () => {
     );
     assert.doesNotMatch(
       footer,
-      />\s*(?:Product|Company|Legal|Estimator|Start Application|For PROs|Pricing|About|Knowledge Base|Contact|How it works|Privacy|Terms|PDPL Statement|Trust Center)\s*</u,
+      />\s*(?:Business Setup|Resources|Company|Get in Touch|Mainland|Free Zones|Offshore|Cost Estimator|Business Registration|Knowledge Base|Business Setup Guides|Document Requirements|FAQ|Blog|About Us|Contact Us|Privacy Policy|Terms & Conditions|Send us a message|PDPL Statement|Trust Center)\s*</u,
     );
   });
 
@@ -89,12 +95,15 @@ describe('SiteFooter localization and integrity contract', () => {
 });
 
 describe('SiteFooter layout contract', () => {
-  it('keeps an asymmetric brand-led grid that collapses responsively', () => {
+  it('keeps the design five-column brand-led grid that collapses to two columns', () => {
     assert.match(
       css,
-      /@media \(min-width: 768px\)[\s\S]*?\.site-public \.footer__grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*2fr\) repeat\(3,\s*minmax\(0,\s*1fr\)\)/u,
+      /@media \(min-width: 1100px\)[\s\S]*?\.site-public \.footer__grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.4fr\) repeat\(3,\s*minmax\(0,\s*1fr\)\) minmax\(0,\s*1\.25fr\)/u,
     );
-    assert.match(declarations('.site-public .footer__grid'), /grid-template-columns:\s*1fr/u);
+    assert.match(
+      declarations('.site-public .footer__grid'),
+      /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/u,
+    );
     assert.doesNotMatch(declarations('.site-public .footer__grid'), /direction\s*:/u);
   });
 
