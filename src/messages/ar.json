@@ -998,6 +998,14 @@
     "welcomeBack": "مرحبًا بعودتك إلى مندوب.",
     "loginTitle": "تسجيل الدخول إلى حسابك",
     "loginDescription": "ادخل إلى لوحة التحكم لإدارة طلباتك ومستنداتك والمزيد.",
+    "registerTitle": "أنشئ حسابك",
+    "loginLink": "تسجيل الدخول",
+    "createAccountSubmit": "إنشاء الحساب",
+    "fullNamePlaceholder": "أدخل اسمك الكامل",
+    "registerEmailPlaceholder": "أدخل بريدك الإلكتروني",
+    "newPasswordPlaceholder": "أنشئ كلمة مرور قوية",
+    "confirmPasswordPlaceholder": "أكد كلمة المرور",
+    "passwordMustContain": "يجب أن تحتوي كلمة المرور على:",
     "startRegistration": "ابدأ تسجيل شركتك في الإمارات.",
     "sendResetLink": "إرسال رابط إعادة التعيين",
     "sending": "جارٍ الإرسال…",
@@ -1185,26 +1193,26 @@
         }
       },
       "register": {
-        "eyebrow": "Create an account",
-        "title": "Start with one Mandoob account.",
-        "description": "Create your Customer or company account using the details requested in the form.",
-        "privacyNote": "Review how Mandoob handles account information before you continue.",
+        "eyebrow": "إنشاء حساب",
+        "title": "أنشئ حسابك وابدأ الآن",
+        "description": "انضم إلى آلاف رواد الأعمال الذين يثقون بنا لتأسيس أعمالهم وتنميتها في الإمارات.",
+        "privacyNote": "معلوماتك في أمان معنا. نستخدم معايير أمان قياسية لحماية بياناتك وخصوصيتك.",
         "benefits": {
           "1": {
-            "title": "Create your profile",
-            "body": "Provide only the account details required here."
+            "title": "لوحة تحكم مخصصة",
+            "body": "تابع طلباتك ومستنداتك ومدفوعاتك في مكان واحد."
           },
           "2": {
-            "title": "Continue in stages",
-            "body": "Move to the next available step after verification."
+            "title": "احفظ وتابع في أي وقت",
+            "body": "احفظ تقدمك وأكمل طلبك متى شئت."
           },
           "3": {
-            "title": "Clear requirements",
-            "body": "See validation and consent requirements before submitting."
+            "title": "تحديثات فورية",
+            "body": "احصل على إشعارات بحالة طلبك والتحديثات المهمة."
           },
           "4": {
-            "title": "Support nearby",
-            "body": "Use the Contact journey if you need assistance."
+            "title": "آمن وموثوق",
+            "body": "بياناتك آمنة معنا بنسبة 100%."
           }
         }
       },

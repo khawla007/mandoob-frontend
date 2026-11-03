@@ -30,11 +30,9 @@ export default async function RegisterPage() {
   return (
     <>
       <header className="auth-card__head">
-        <span className="eyebrow">{t('accountEyebrow')}</span>
-        <h1>{t('createAccount')}</h1>
-        <p>{t('startRegistration')}</p>
-        <p>
-          {t('alreadyHaveAccount')} <Link href="/login">{t('signIn')}</Link>
+        <h1>{t('registerTitle')}</h1>
+        <p className="auth-card__switch">
+          {t('alreadyHaveAccount')} <Link href="/login">{t('loginLink')}</Link>
         </p>
       </header>
 

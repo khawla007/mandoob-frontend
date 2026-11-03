@@ -8275,7 +8275,8 @@
 }
 .site-public .auth-experience__stage {
   display: grid;
-  min-block-size: 680px;
+  /* Fill the viewport below the 65px site header, like the home hero. */
+  min-block-size: calc(100svh - 65px);
   background: var(--public-surface);
 }
 .site-public .auth-experience__narrative {
@@ -8386,21 +8387,18 @@
 .site-public .auth-experience__form-column {
   display: grid;
   place-items: center;
-  padding: clamp(28px, 5vw, 72px);
+  padding: var(--sp-4) clamp(28px, 5vw, 72px);
   background: color-mix(in oklch, var(--public-surface) 84%, var(--public-canvas));
 }
 .site-public .auth-experience__card {
   display: grid;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
   inline-size: min(100%, 620px);
-  padding: clamp(28px, 4vw, 48px);
+  padding: clamp(28px, 4vw, var(--sp-5));
   border: 1px solid var(--public-border-subtle);
   border-radius: calc(var(--r-md) + 4px);
   background: var(--public-surface-elevated);
   box-shadow: 0 24px 64px color-mix(in oklch, var(--public-text-primary) 11%, transparent);
-}
-.site-public .auth-experience--sensitive .auth-experience__stage {
-  min-block-size: 590px;
 }
 .site-public .auth-experience--sensitive .auth-experience__narrative-content {
   padding-block: 48px;
@@ -8420,6 +8418,59 @@
 .site-public .auth-card__head p {
   font-size: var(--fs-14);
   color: var(--zinc-600);
+}
+.site-public .auth-card__switch {
+  color: var(--public-text-muted);
+}
+.site-public .auth-card__switch a {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.site-public .auth-card__switch a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Register password checklist (design HTML .password-rules). */
+.site-public .password-rules {
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+}
+.site-public .password-rules__title {
+  margin-block-end: var(--sp-2);
+  color: var(--public-text-primary);
+  font-size: var(--fs-12);
+  font-weight: 700;
+}
+.site-public .password-rules ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.site-public .password-rules li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  color: var(--public-text-muted);
+  font-size: var(--fs-12);
+}
+.site-public .password-rules li svg {
+  flex: none;
+  inline-size: 15px;
+  block-size: 15px;
+  color: color-mix(in oklch, var(--public-text-muted) 45%, transparent);
+  transition: color 160ms ease;
+}
+.site-public .password-rules li[data-passed='true'] {
+  color: var(--public-text-primary);
+}
+.site-public .password-rules li[data-passed='true'] svg {
+  color: oklch(0.62 0.15 150);
+}
+@media (max-width: 640px) {
+  .site-public .password-rules ul {
+    grid-template-columns: 1fr;
+  }
 }
 .site-public .auth-card__foot {
   display: flex;

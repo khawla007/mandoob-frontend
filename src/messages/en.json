@@ -998,6 +998,14 @@
     "welcomeBack": "Welcome back to Mandoob.",
     "loginTitle": "Login to Your Account",
     "loginDescription": "Access your dashboard to manage your applications, documents and more.",
+    "registerTitle": "Create Your Account",
+    "loginLink": "Login",
+    "createAccountSubmit": "Create Account",
+    "fullNamePlaceholder": "Enter your full name",
+    "registerEmailPlaceholder": "Enter your email address",
+    "newPasswordPlaceholder": "Create a strong password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "passwordMustContain": "Password must contain:",
     "startRegistration": "Start your UAE company registration.",
     "sendResetLink": "Send reset link",
     "sending": "Sending…",
@@ -1186,25 +1194,25 @@
       },
       "register": {
         "eyebrow": "Create an account",
-        "title": "Start with one Mandoob account.",
-        "description": "Create your Customer or company account using the details requested in the form.",
-        "privacyNote": "Review how Mandoob handles account information before you continue.",
+        "title": "Create Your Account and Get Started",
+        "description": "Join thousands of entrepreneurs who trust us to start and grow their business in the UAE.",
+        "privacyNote": "Your information is safe with us. We use industry-standard security to protect your data and privacy.",
         "benefits": {
           "1": {
-            "title": "Create your profile",
-            "body": "Provide only the account details required here."
+            "title": "Personalized Dashboard",
+            "body": "Track your applications, documents and payments in one place."
           },
           "2": {
-            "title": "Continue in stages",
-            "body": "Move to the next available step after verification."
+            "title": "Save & Resume Anytime",
+            "body": "Save your progress and continue your application whenever you want."
           },
           "3": {
-            "title": "Clear requirements",
-            "body": "See validation and consent requirements before submitting."
+            "title": "Real-time Updates",
+            "body": "Get notified about your application status and important updates."
           },
           "4": {
-            "title": "Support nearby",
-            "body": "Use the Contact journey if you need assistance."
+            "title": "Secure & Trusted",
+            "body": "Your data is 100% secure with us."
           }
         }
       },
