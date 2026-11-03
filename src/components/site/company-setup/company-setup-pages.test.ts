@@ -41,7 +41,8 @@ describe('company setup discovery page contracts', () => {
     for (const term of [
       'POPULAR_FREE_ZONES',
       'FREE_ZONE_DIRECTORY',
-      'Mainland and Free Zone',
+      'Popular Free Zones',
+      'Browse All Free Zones',
       'SetupProcess',
     ]) {
       assert.match(page, new RegExp(term));

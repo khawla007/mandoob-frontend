@@ -72,6 +72,7 @@ export function buildPublicSitemap({
     '/blog',
     '/mainland',
     '/free-zones',
+    '/free-zones/directory',
     '/offshore',
     '/about',
     '/contact',

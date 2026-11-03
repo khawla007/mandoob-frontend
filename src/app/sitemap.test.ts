@@ -29,6 +29,7 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
       '/blog',
       '/mainland',
       '/free-zones',
+      '/free-zones/directory',
       '/offshore',
       '/about',
       '/contact',

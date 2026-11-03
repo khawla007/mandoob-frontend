@@ -46,18 +46,17 @@ describe('company setup discovery composition contracts', () => {
     assert.match(component, /<SetupCtaBand\b/u);
   });
 
-  it('keeps the Free Zone directory table and nine-section reference order', () => {
+  it('keeps the Free Zone directory table and design-HTML section order', () => {
     const component = source('src/components/site/company-setup/FreeZonesDiscovery.tsx');
     assert.deepEqual(sectionIds(component), [
       'setup-hero',
-      'setup-benefits',
       'free-zone-popular',
       'free-zone-directory',
-      'free-zone-comparison',
+      'free-zone-benefits',
       'free-zone-cost-process',
       'setup-faq',
-      'setup-conversion',
     ]);
+    assert.match(component, /<SetupCtaBand\b/u);
     assert.match(component, /FreeZoneDirectory/u);
     assert.match(source('src/components/site/company-setup/FreeZoneDirectory.tsx'), /<table/u);
   });
