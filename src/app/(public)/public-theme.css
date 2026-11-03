@@ -14470,6 +14470,71 @@
   }
 }
 
+/* Contact (design HTML): the form/help row and the WhatsApp/quick-links row
+   share one white section with site section spacing (58px) above the form,
+   between the rows and below the boxes; no separate grey band. */
+.site-public .contact-page__workspace {
+  padding-block: clamp(38px, 4.5vw, 58px) 0;
+}
+.site-public .contact-page__workspace,
+.site-public .contact-page__support-row {
+  border-block: 0;
+}
+.site-public .contact-page__support-row {
+  padding-block: clamp(38px, 4.5vw, 58px); /* same gap above and below the two boxes */
+  background: transparent;
+}
+.site-public .contact-page__support-row + .about-contact-conversion {
+  margin-block-start: 0;
+}
+
+/* Scenic inner heroes (About, Contact and the InfoPage pages): from 900px the
+   breadcrumb and copy form one block, vertically centred in the
+   inner-hero-block height like the setup heroes. Bottom padding also
+   reserves the overlap of a following strip (About stats 64px, Contact
+   channels 48px) so the block centres in the visible area. */
+@media (min-width: 900px) {
+  .site-public .about-contact-hero.about-page__hero {
+    --scenic-overlap: 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-block-size: var(--inner-hero-block);
+    padding-block: 24px calc(24px + var(--scenic-overlap));
+  }
+  .site-public .about-contact-hero.about-page__hero:has(+ .about-page__stats) {
+    --scenic-overlap: 64px;
+  }
+  .site-public .about-contact-hero.about-page__hero:has(+ .about-contact-info-strip) {
+    --scenic-overlap: 48px;
+  }
+  .site-public .about-contact-hero.about-page__hero .about-contact-hero__frame {
+    padding-block-start: 0;
+  }
+  /* Align the copy with the breadcrumb/container edge (the base grid width
+     uses 50vw, which includes the scrollbar and drifted ~8px on wide screens). */
+  .site-public .about-contact-hero.about-page__hero .about-contact-hero__grid {
+    inline-size: 100%;
+    max-inline-size: var(--container);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+  .site-public .about-contact-hero.about-page__hero .about-contact-hero__copy,
+  .site-public .about-contact-hero.about-page__hero.contact-page__hero .about-contact-hero__copy {
+    min-block-size: 0;
+    padding-block: 0;
+  }
+}
+
+/* Contact: the channel strip and both content rows use the site container
+   width (they previously capped at 1376px / 1340px and sat inset from the
+   header and breadcrumb edges). */
+.site-public .about-contact-info-strip,
+.site-public .contact-page__workspace-grid,
+.site-public .contact-page__support-grid {
+  max-inline-size: var(--container);
+}
+
 /* ---------- About layout redesign (updated design HTML, 2026-11) ----------
    Values become four bordered cards (icon above copy) on a soft band;
    the shared conversion band becomes a contained rounded card, matching the

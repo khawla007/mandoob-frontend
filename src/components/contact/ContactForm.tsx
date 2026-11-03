@@ -225,9 +225,11 @@ function ContactFormRuntime({
   return (
     <form className="contact-form" noValidate onSubmit={handleSubmit}>
       <div className="contact-form__intro">
-        <p className="eyebrow">Send Us a Message</p>
-        <h2>Tell us how we can help</h2>
-        <p>All fields are required. Phase 1 previews do not send messages.</p>
+        <h2>Send Us a Message</h2>
+        <p>
+          Fill out the form and our team will get back to you shortly. Phase 1 previews do not send
+          messages yet.
+        </p>
         {initialTopic === 'pro-interest' ? (
           <p role="status">
             You arrived from the PRO interest review. Message delivery remains unavailable, so

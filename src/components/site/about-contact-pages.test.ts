@@ -80,10 +80,9 @@ describe('About composition and Contact route shell', () => {
     );
     assert.match(contactSource, /process\.env\.NODE_ENV === 'development'/u);
     assert.match(contactSource, /await getTranslations\('contact'\)/u);
-    assert.match(contactSource, /await getTranslations\('site'\)/u);
     assert.match(contactSource, /eyebrow:\s*tContact\('eyebrow'\)/u);
     assert.match(contactSource, /title:\s*tContact\('title'\)/u);
-    assert.match(contactSource, /description:\s*tSite\('footer\.description'\)/u);
+    assert.match(contactSource, /description:\s*tContact\('heroDescription'\)/u);
     assert.doesNotMatch(contactSource, /estimateLabel|tSite\('getEstimate'\)/u);
     assert.doesNotMatch(
       contactSource,

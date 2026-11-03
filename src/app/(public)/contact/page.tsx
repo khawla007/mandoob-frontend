@@ -17,7 +17,6 @@ type ContactPageProps = {
 
 export default async function ContactPage({ searchParams }: ContactPageProps) {
   const tContact = await getTranslations('contact');
-  const tSite = await getTranslations('site');
   const query = await searchParams;
   const demoMode =
     process.env.NODE_ENV === 'development'
@@ -30,7 +29,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       heroCopy={{
         eyebrow: tContact('eyebrow'),
         title: tContact('title'),
-        description: tSite('footer.description'),
+        description: tContact('heroDescription'),
       }}
       demoOutcome={demoMode?.outcome}
       demoDelayMs={demoMode?.delayMs}
