@@ -54,7 +54,7 @@ describe('strict-parity Contact page', () => {
   });
 
   it('renders one scenic hero with four compact capabilities and local UAE imagery', () => {
-    assert.match(body, /className="contact-page__hero"/u);
+    assert.match(body, /className="about-page__hero contact-page__hero"/u);
     assert.match(body, /headingId="contact-page-title"/u);
     assert.match(body, /imageSrc="\/hero\/skyline\.webp"/u);
     assert.match(body, /imageAlt="Dubai skyline at sunset"/u);
@@ -133,12 +133,12 @@ describe('strict-parity Contact page', () => {
     const quickLinks = arrayBlock('quickLinks');
     const routes = [...quickLinks.matchAll(/href:\s*'([^']+)'/gu)].map((match) => match[1]);
     assert.deepEqual(routes, [
+      '/guides',
       '/estimate',
-      '/mainland',
-      '/free-zones',
-      '/offshore',
+      '/free-zones/directory',
+      '/faq',
+      '/document-requirements',
       '/knowledge-base',
-      '/apply',
     ]);
     assert.doesNotMatch(quickLinks, /href:\s*'(?:#|\/contact|\/login|\/register)/u);
   });

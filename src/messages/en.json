@@ -3782,8 +3782,9 @@
     }
   },
   "contact": {
-    "eyebrow": "Contact",
-    "title": "Talk to the Mandoob team.",
+    "eyebrow": "Contact us",
+    "title": "We're Here to Help You Start Your UAE Business",
+    "heroDescription": "Have questions about company registration, costs, or requirements? Our experts are ready to assist you at every step.",
     "lede": "Questions about UAE setup, PRO subscriptions, or white-label portals? Send a note and a specialist replies within one business day.",
     "nameLabel": "Full name",
     "namePlaceholder": "Your name",

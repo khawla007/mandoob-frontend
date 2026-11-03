@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import {
   ArrowUpRight,
+  Headset,
+  UsersRound,
   Building2,
   Calculator,
   Clock3,
@@ -11,7 +13,6 @@ import {
   MapPin,
   MessageCircle,
   Phone,
-  Route,
   ShieldCheck,
 } from 'lucide-react';
 
@@ -109,15 +110,20 @@ const helpCategories = [
     description: 'Organize the details needed to understand a renewal request.',
     icon: <ShieldCheck />,
   },
+  {
+    title: 'Other inquiries',
+    description: "Any other questions? We're happy to help.",
+    icon: <MessageCircle />,
+  },
 ] as const;
 
 const quickLinks = [
-  { label: 'Get an estimate', href: '/estimate' },
-  { label: 'Mainland setup', href: '/mainland' },
-  { label: 'Free zone setup', href: '/free-zones' },
-  { label: 'Offshore setup', href: '/offshore' },
-  { label: 'Knowledge base', href: '/knowledge-base' },
-  { label: 'Start an application', href: '/apply' },
+  { label: 'Business Setup Guide', href: '/guides' },
+  { label: 'Cost Estimator', href: '/estimate' },
+  { label: 'Free Zones Directory', href: '/free-zones/directory' },
+  { label: 'FAQ', href: '/faq' },
+  { label: 'Visa Information', href: '/document-requirements' },
+  { label: 'Knowledge Base', href: '/knowledge-base' },
 ] as const;
 
 type ContactPageBodyProps = {
@@ -140,34 +146,34 @@ export function ContactPageBody({
   return (
     <>
       <PageScenicHero
-        className="contact-page__hero"
+        className="about-page__hero contact-page__hero"
         headingId="contact-page-title"
         eyebrow={heroCopy.eyebrow}
         title={heroCopy.title}
         description={heroCopy.description}
-        currentLabel="Contact"
+        currentLabel="Contact Us"
         imageSrc="/hero/skyline.webp"
         imageAlt="Dubai skyline at sunset"
         features={[
           {
-            title: 'Company setup',
-            description: 'Clarify a possible setup path',
-            icon: <Building2 />,
+            title: 'Quick Response',
+            description: 'one business day',
+            icon: <MessageCircle />,
           },
           {
-            title: 'Document guidance',
-            description: 'Organize relevant information',
-            icon: <FileCheck2 />,
+            title: 'Expert Guidance',
+            description: 'business setup experts',
+            icon: <UsersRound />,
           },
           {
-            title: 'Cost planning',
-            description: 'Request a tailored estimate',
-            icon: <Calculator />,
+            title: 'Confidential',
+            description: 'always protected',
+            icon: <ShieldCheck />,
           },
           {
-            title: 'PRO coordination',
-            description: 'Understand available next actions',
-            icon: <Route />,
+            title: 'Dedicated Support',
+            description: 'every step',
+            icon: <Headset />,
           },
         ]}
       />
@@ -189,12 +195,8 @@ export function ContactPageBody({
           </div>
 
           <aside className="contact-page__help" aria-labelledby="contact-help-title">
-            <span className="eyebrow eyebrow--accent">How we can help you</span>
-            <h2 id="contact-help-title">Choose the topic closest to your request.</h2>
-            <p>
-              These topics describe the guidance you can request. Outcomes remain dependent on the
-              relevant information and third-party requirements.
-            </p>
+            <h2 id="contact-help-title">How We Can Help You</h2>
+            <p>Our business setup specialists can assist you with:</p>
             <ul className="contact-page__help-list">
               {helpCategories.map((category) => (
                 <li key={category.title}>
@@ -228,8 +230,8 @@ export function ContactPageBody({
           </article>
 
           <article className="contact-page__quick-links">
-            <span className="eyebrow eyebrow--accent">Quick links</span>
-            <h2>Continue with a working route.</h2>
+            <h2>Quick Links</h2>
+            <p>Find answers to common questions.</p>
             <ul>
               {quickLinks.map((link) => (
                 <li key={link.href}>
@@ -246,9 +248,9 @@ export function ContactPageBody({
 
       <PublicConversionBand
         headingId="contact-conversion-title"
-        title="Ready to organize your company setup?"
-        description="Start with an estimate or explore guidance for common UAE company setup questions."
-        primaryCta={{ label: 'Get an estimate', href: '/estimate' }}
+        title="Ready to Start Your UAE Business?"
+        description="Get a clear estimate and our experts will guide you every step of the way."
+        primaryCta={{ label: 'Calculate My Setup Cost', href: '/estimate' }}
         secondaryCta={{ label: 'Explore help guidance', href: '/knowledge-base' }}
       />
     </>
